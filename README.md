@@ -44,7 +44,7 @@ pip install steamloop
 
 ### Pairing
 
-Put the thermostat in pairing mode (Menu > Settings > Remote Access > Pair New Device), then:
+Put the thermostat in pairing mode (Menu > Settings > Network > Advanced Setup > Remote Connection > Pair), then:
 
 ```bash
 steamloop 192.168.1.100 --pair
