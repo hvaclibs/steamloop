@@ -288,7 +288,7 @@ class ThermostatConnection:
         for cert_set in CERT_SETS:
             try:
                 await self._connect_with_cert_set(cert_set)
-            except SteamloopConnectionError as exc:  # noqa: PERF203
+            except SteamloopConnectionError as exc:
                 _LOGGER.warning("Failed with %s certs: %s", cert_set.name, exc)
                 last_exc = exc
             else:
@@ -390,7 +390,7 @@ class ThermostatConnection:
         for cb in self._event_callbacks:
             try:
                 cb(msg)
-            except Exception:  # noqa: PERF203
+            except Exception:
                 _LOGGER.exception("Error in event callback")
 
     def _get_zone(self, zone_id: str) -> Zone:
