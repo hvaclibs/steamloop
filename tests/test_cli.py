@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -80,9 +79,7 @@ def test_command_heat(capsys: pytest.CaptureFixture[str]) -> None:
     conn = _make_mock_conn()
     result = _handle_command(conn, "heat 70", ["heat", "70"], "1")
     assert result == "1"
-    conn.set_temperature_setpoint.assert_called_once_with(
-        "1", heat_setpoint="70"
-    )
+    conn.set_temperature_setpoint.assert_called_once_with("1", heat_setpoint="70")
     captured = capsys.readouterr()
     assert "heat setpoint" in captured.out
 
@@ -91,9 +88,7 @@ def test_command_cool(capsys: pytest.CaptureFixture[str]) -> None:
     conn = _make_mock_conn()
     result = _handle_command(conn, "cool 74", ["cool", "74"], "1")
     assert result == "1"
-    conn.set_temperature_setpoint.assert_called_once_with(
-        "1", cool_setpoint="74"
-    )
+    conn.set_temperature_setpoint.assert_called_once_with("1", cool_setpoint="74")
     captured = capsys.readouterr()
     assert "cool setpoint" in captured.out
 
@@ -164,9 +159,7 @@ def test_command_eheat_off() -> None:
 
 def test_command_raw_json() -> None:
     conn = _make_mock_conn()
-    _handle_command(
-        conn, 'raw {"Heartbeat":{}}', ["raw", '{"heartbeat":{}}'], "1"
-    )
+    _handle_command(conn, 'raw {"Heartbeat":{}}', ["raw", '{"heartbeat":{}}'], "1")
     conn.send.assert_called_once()
 
 
@@ -315,9 +308,7 @@ async def test_do_monitor_connection_error(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     mock_conn = MagicMock()
-    mock_conn.__aenter__ = AsyncMock(
-        side_effect=SteamloopError("connect fail")
-    )
+    mock_conn.__aenter__ = AsyncMock(side_effect=SteamloopError("connect fail"))
     mock_conn.__aexit__ = AsyncMock(return_value=False)
 
     with (

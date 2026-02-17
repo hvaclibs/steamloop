@@ -7,8 +7,6 @@ import os
 import stat
 from pathlib import Path
 
-import pytest
-
 from steamloop.connection import (
     _pairing_path,
     load_pairing,

@@ -26,7 +26,6 @@ from steamloop.models import ThermostatState, Zone
 
 from .conftest import make_event
 
-
 # ---------------------------------------------------------------------------
 # Properties
 # ---------------------------------------------------------------------------
@@ -179,9 +178,7 @@ def test_event_zone_mode_updated(connection: ThermostatConnection) -> None:
 def test_event_supported_zone_modes(
     connection: ThermostatConnection,
 ) -> None:
-    connection._dispatch(
-        make_event("SupportedZoneModesUpdated", {"modes": "0,1,2,3"})
-    )
+    connection._dispatch(make_event("SupportedZoneModesUpdated", {"modes": "0,1,2,3"}))
     assert connection.state.supported_modes == [
         ZoneMode.OFF,
         ZoneMode.AUTO,
@@ -193,25 +190,19 @@ def test_event_supported_zone_modes(
 def test_event_supported_zone_modes_invalid_skipped(
     connection: ThermostatConnection,
 ) -> None:
-    connection._dispatch(
-        make_event("SupportedZoneModesUpdated", {"modes": "0,99,2"})
-    )
+    connection._dispatch(make_event("SupportedZoneModesUpdated", {"modes": "0,99,2"}))
     assert connection.state.supported_modes == [ZoneMode.OFF, ZoneMode.COOL]
 
 
 def test_event_fan_mode_updated(connection: ThermostatConnection) -> None:
-    connection._dispatch(
-        make_event("FanModeUpdated", {"fan_mode": "3"})
-    )
+    connection._dispatch(make_event("FanModeUpdated", {"fan_mode": "3"}))
     assert connection.state.fan_mode == FanMode.CIRCULATE
 
 
 def test_event_emergency_heat_updated(
     connection: ThermostatConnection,
 ) -> None:
-    connection._dispatch(
-        make_event("EmergencyHeatUpdated", {"emergency_heat": "1"})
-    )
+    connection._dispatch(make_event("EmergencyHeatUpdated", {"emergency_heat": "1"}))
     assert connection.state.emergency_heat == "1"
 
 
@@ -219,9 +210,7 @@ def test_event_indoor_relative_humidity_updated(
     connection: ThermostatConnection,
 ) -> None:
     connection._dispatch(
-        make_event(
-            "IndoorRelativeHumidityUpdated", {"relative_humidity": "45"}
-        )
+        make_event("IndoorRelativeHumidityUpdated", {"relative_humidity": "45"})
     )
     assert connection.state.relative_humidity == "45"
 
@@ -229,18 +218,14 @@ def test_event_indoor_relative_humidity_updated(
 def test_event_cooling_status_updated(
     connection: ThermostatConnection,
 ) -> None:
-    connection._dispatch(
-        make_event("CoolingStatusUpdated", {"cooling_active": "2"})
-    )
+    connection._dispatch(make_event("CoolingStatusUpdated", {"cooling_active": "2"}))
     assert connection.state.cooling_active == "2"
 
 
 def test_event_heating_status_updated(
     connection: ThermostatConnection,
 ) -> None:
-    connection._dispatch(
-        make_event("HeatingStatusUpdated", {"heating_active": "1"})
-    )
+    connection._dispatch(make_event("HeatingStatusUpdated", {"heating_active": "1"}))
     assert connection.state.heating_active == "1"
 
 
@@ -360,9 +345,7 @@ async def _feed_response(
 
 async def test_login_success(connection: ThermostatConnection) -> None:
     resp = {"Response": {"LoginResponse": {"status": "1"}}}
-    asyncio.get_event_loop().call_soon(
-        lambda: connection._on_message(resp)
-    )
+    asyncio.get_event_loop().call_soon(lambda: connection._on_message(resp))
     # Need a small delay for the queue to process
     task = asyncio.create_task(_feed_response(connection, resp))
     result = await connection.login()
@@ -381,11 +364,7 @@ async def test_login_auth_failure(connection: ThermostatConnection) -> None:
 async def test_login_error_response(
     connection: ThermostatConnection,
 ) -> None:
-    resp = {
-        "Response": {
-            "Error": {"error_type": "AUTH", "description": "bad key"}
-        }
-    }
+    resp = {"Response": {"Error": {"error_type": "AUTH", "description": "bad key"}}}
     task = asyncio.create_task(_feed_response(connection, resp))
     with pytest.raises(AuthenticationError, match="AUTH"):
         await connection.login()
@@ -408,9 +387,7 @@ async def test_login_timeout(connection: ThermostatConnection) -> None:
 async def test_pair_success(connection: ThermostatConnection) -> None:
     async def _feed() -> None:
         await asyncio.sleep(0.01)
-        connection._on_message(
-            {"Response": {"LoginResponse": {"status": "1"}}}
-        )
+        connection._on_message({"Response": {"LoginResponse": {"status": "1"}}})
         await asyncio.sleep(0.01)
         connection._on_message(
             {"Request": {"SetSecretKey": {"secret_key": "new-key-123"}}}
@@ -430,9 +407,7 @@ async def test_pair_sends_confirmation(
 
     async def _feed() -> None:
         await asyncio.sleep(0.01)
-        connection._on_message(
-            {"Request": {"SetSecretKey": {"secret_key": "abc"}}}
-        )
+        connection._on_message({"Request": {"SetSecretKey": {"secret_key": "abc"}}})
 
     task = asyncio.create_task(_feed())
     await connection.pair()
@@ -459,11 +434,7 @@ async def test_pair_rejected(connection: ThermostatConnection) -> None:
 async def test_pair_error_response(
     connection: ThermostatConnection,
 ) -> None:
-    resp = {
-        "Response": {
-            "Error": {"error_type": "PAIR", "description": "not ready"}
-        }
-    }
+    resp = {"Response": {"Error": {"error_type": "PAIR", "description": "not ready"}}}
     task = asyncio.create_task(_feed_response(connection, resp))
     with pytest.raises(PairingError, match="PAIR"):
         await connection.pair()
@@ -488,12 +459,8 @@ async def test_aenter_aexit() -> None:
     with (
         patch.object(conn, "connect", new_callable=AsyncMock) as mock_connect,
         patch.object(conn, "login", new_callable=AsyncMock) as mock_login,
-        patch.object(
-            conn, "start_background_tasks"
-        ) as mock_start,
-        patch.object(
-            conn, "disconnect", new_callable=AsyncMock
-        ) as mock_disconnect,
+        patch.object(conn, "start_background_tasks") as mock_start,
+        patch.object(conn, "disconnect", new_callable=AsyncMock) as mock_disconnect,
     ):
         async with conn as c:
             assert c is conn
@@ -508,7 +475,10 @@ async def test_aenter_login_fails_closes_transport() -> None:
     with (
         patch.object(conn, "connect", new_callable=AsyncMock),
         patch.object(
-            conn, "login", new_callable=AsyncMock, side_effect=AuthenticationError("bad")
+            conn,
+            "login",
+            new_callable=AsyncMock,
+            side_effect=AuthenticationError("bad"),
         ),
         patch.object(conn, "_close_transport") as mock_close,
     ):
@@ -559,9 +529,7 @@ async def test_connect_with_specified_cert_set() -> None:
 
     cert = CertSet(name="test", chain_data="dummy")
     conn = ThermostatConnection("10.0.0.1", secret_key="sk", cert_set=cert)
-    with patch.object(
-        conn, "_connect_with_cert_set", new_callable=AsyncMock
-    ) as mock:
+    with patch.object(conn, "_connect_with_cert_set", new_callable=AsyncMock) as mock:
         await conn.connect()
     mock.assert_called_once_with(cert)
 
@@ -570,9 +538,7 @@ async def test_connect_closes_existing(
     connection: ThermostatConnection,
 ) -> None:
     assert connection.connected
-    with patch.object(
-        connection, "_connect_with_cert_set", new_callable=AsyncMock
-    ):
+    with patch.object(connection, "_connect_with_cert_set", new_callable=AsyncMock):
         await connection.connect()
 
 
@@ -594,9 +560,7 @@ async def test_connect_with_cert_set_success() -> None:
         ),
         patch("asyncio.get_running_loop") as mock_loop,
     ):
-        mock_loop.return_value.run_in_executor = AsyncMock(
-            return_value=MagicMock()
-        )
+        mock_loop.return_value.run_in_executor = AsyncMock(return_value=MagicMock())
         await conn._connect_with_cert_set(cert)
     assert conn._connected is True
     assert conn._transport is mock_transport
@@ -611,9 +575,7 @@ async def test_connect_ssl_error() -> None:
     cert = CertSet(name="test", chain_data="dummy")
     conn._cert_set = cert
     with (
-        patch(
-            "steamloop.connection.create_ssl_context", return_value=MagicMock()
-        ),
+        patch("steamloop.connection.create_ssl_context", return_value=MagicMock()),
         patch(
             "asyncio.get_running_loop",
         ) as mock_loop,
@@ -643,9 +605,7 @@ async def test_connect_timeout() -> None:
         patch("asyncio.get_running_loop") as mock_loop,
         pytest.raises(SteamloopConnectionError, match="timed out"),
     ):
-        mock_loop.return_value.run_in_executor = AsyncMock(
-            return_value=MagicMock()
-        )
+        mock_loop.return_value.run_in_executor = AsyncMock(return_value=MagicMock())
         await conn._connect_with_cert_set(cert)
 
 
@@ -664,9 +624,7 @@ async def test_connect_os_error() -> None:
         patch("asyncio.get_running_loop") as mock_loop,
         pytest.raises(SteamloopConnectionError, match="TCP connect"),
     ):
-        mock_loop.return_value.run_in_executor = AsyncMock(
-            return_value=MagicMock()
-        )
+        mock_loop.return_value.run_in_executor = AsyncMock(return_value=MagicMock())
         await conn._connect_with_cert_set(cert)
 
 
@@ -735,14 +693,10 @@ async def test_login_skips_non_response(
     async def _feed() -> None:
         await asyncio.sleep(0.01)
         # First an event (should be skipped by login)
-        connection._on_message(
-            {"Event": {"ZoneAdded": {"zone_id": "1"}}}
-        )
+        connection._on_message({"Event": {"ZoneAdded": {"zone_id": "1"}}})
         await asyncio.sleep(0.01)
         # Then the actual response
-        connection._on_message(
-            {"Response": {"LoginResponse": {"status": "1"}}}
-        )
+        connection._on_message({"Response": {"LoginResponse": {"status": "1"}}})
 
     task = asyncio.create_task(_feed())
     result = await connection.login()
@@ -770,9 +724,7 @@ async def test_connect_ssl_cert_verification_error() -> None:
         patch("asyncio.get_running_loop") as mock_loop,
         pytest.raises(SteamloopConnectionError, match="cert verification"),
     ):
-        mock_loop.return_value.run_in_executor = AsyncMock(
-            return_value=MagicMock()
-        )
+        mock_loop.return_value.run_in_executor = AsyncMock(return_value=MagicMock())
         await conn._connect_with_cert_set(cert)
 
 
@@ -912,9 +864,7 @@ def test_set_temperature_setpoint_both_provided(
     connection.state.zones["1"] = Zone(
         zone_id="1", heat_setpoint="68", cool_setpoint="76", deadband="3"
     )
-    connection.set_temperature_setpoint(
-        "1", heat_setpoint="70", cool_setpoint="78"
-    )
+    connection.set_temperature_setpoint("1", heat_setpoint="70", cool_setpoint="78")
     msg = _get_sent_message(connection)
     req = msg["Request"]["UpdateTemperatureSetpoint"]
     assert req["heat_setpoint"] == "70"
@@ -976,9 +926,7 @@ def test_deadband_both_provided_raises_cool(
     connection.state.zones["1"] = Zone(
         zone_id="1", heat_setpoint="68", cool_setpoint="76", deadband="3"
     )
-    connection.set_temperature_setpoint(
-        "1", heat_setpoint="72", cool_setpoint="73"
-    )
+    connection.set_temperature_setpoint("1", heat_setpoint="72", cool_setpoint="73")
     msg = _get_sent_message(connection)
     req = msg["Request"]["UpdateTemperatureSetpoint"]
     assert req["heat_setpoint"] == "72"

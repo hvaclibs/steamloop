@@ -6,9 +6,9 @@ import base64
 import ssl
 import tempfile
 import zlib
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Generator
 
 # Primary client cert + key (zlib compressed, base64 encoded)
 _PRIMARY_CHAIN = (
@@ -122,7 +122,8 @@ def _decode(data: str) -> bytes:
 
 @contextmanager
 def _pem_path(data: bytes) -> Generator[str, None, None]:
-    """Yield a file path containing PEM data, cleaned up on exit.
+    """
+    Yield a file path containing PEM data, cleaned up on exit.
 
     ssl.SSLContext.load_cert_chain() only accepts file paths — there is no
     in-memory (cadata) variant for client certs in Python's ssl module.
@@ -143,7 +144,8 @@ class CertSet:
 
 
 def create_ssl_context(cert_set: CertSet) -> ssl.SSLContext:
-    """Create an SSL context configured for thermostat mTLS.
+    """
+    Create an SSL context configured for thermostat mTLS.
 
     Decodes the embedded cert data and loads it via load_cert_chain().
     A brief temp file is used because ssl.SSLContext.load_cert_chain()

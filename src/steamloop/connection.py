@@ -8,8 +8,9 @@ import hashlib
 import logging
 import os
 import ssl
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import orjson
 
@@ -56,7 +57,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _encode_message(msg: dict[str, Any]) -> bytes:
-    """Encode a message for sending.
+    """
+    Encode a message for sending.
 
     Wire format: compact JSON + " " + \\x00
     The thermostat uses null-byte delimiters to find message boundaries.
@@ -71,10 +73,9 @@ def _pairing_path(ip: str, directory: Path | None = None) -> Path:
     return base / f"pairing_{md5}.json"
 
 
-async def load_pairing(
-    ip: str, directory: Path | None = None
-) -> dict[str, str] | None:
-    """Load saved pairing data for a thermostat IP.
+async def load_pairing(ip: str, directory: Path | None = None) -> dict[str, str] | None:
+    """
+    Load saved pairing data for a thermostat IP.
 
     Args:
         ip: Thermostat IP address.
@@ -82,6 +83,7 @@ async def load_pairing(
 
     Returns:
         Pairing dict with secret_key, device_type, device_id, or None.
+
     """
     path = _pairing_path(ip, directory)
     loop = asyncio.get_running_loop()
@@ -99,12 +101,14 @@ def _load_pairing_sync(path: Path) -> dict[str, str] | None:
 async def save_pairing(
     ip: str, login_info: dict[str, str], directory: Path | None = None
 ) -> None:
-    """Save pairing data for a thermostat IP.
+    """
+    Save pairing data for a thermostat IP.
 
     Args:
         ip: Thermostat IP address.
         login_info: Dict with secret_key, device_type, device_id.
         directory: Directory to save to. Defaults to current directory.
+
     """
     path = _pairing_path(ip, directory)
     loop = asyncio.get_running_loop()
@@ -124,7 +128,8 @@ def _save_pairing_sync(path: Path, login_info: dict[str, str]) -> None:
 
 
 class ThermostatProtocol(asyncio.Protocol):
-    """Low-level protocol handler for thermostat communication.
+    """
+    Low-level protocol handler for thermostat communication.
 
     Handles framing (null-byte delimited JSON) and delegates parsed
     messages to the owning ThermostatConnection.
@@ -168,7 +173,8 @@ class ThermostatProtocol(asyncio.Protocol):
         self._buf.clear()
 
     def _process_buffer(self) -> None:
-        """Extract complete JSON messages from the buffer and dispatch them.
+        """
+        Extract complete JSON messages from the buffer and dispatch them.
 
         Messages on the wire are terminated by a null byte (0x00).
         The JSON is extracted by finding the first '{' and last '}'
@@ -197,7 +203,8 @@ class ThermostatProtocol(asyncio.Protocol):
 
 
 class ThermostatConnection:
-    """Async connection to a thermostat over mTLS.
+    """
+    Async connection to a thermostat over mTLS.
 
     After calling connect() and login(), call start_background_tasks()
     to begin sending heartbeats. Events are dispatched automatically
@@ -259,7 +266,8 @@ class ThermostatConnection:
     # --- Connection lifecycle ---
 
     async def connect(self) -> None:
-        """Establish the TLS connection to the thermostat.
+        """
+        Establish the TLS connection to the thermostat.
 
         If no cert_set was specified, tries each cert set in order until
         one succeeds.  If already connected, the existing connection is
@@ -267,6 +275,7 @@ class ThermostatConnection:
 
         Raises:
             SteamloopConnectionError: If the connection fails.
+
         """
         if self._connected:
             self._close_transport()
@@ -282,9 +291,7 @@ class ThermostatConnection:
                 self._cert_set = cert_set
                 return
             except SteamloopConnectionError as exc:
-                _LOGGER.warning(
-                    "Failed with %s certs: %s", cert_set.name, exc
-                )
+                _LOGGER.warning("Failed with %s certs: %s", cert_set.name, exc)
                 last_exc = exc
         raise SteamloopConnectionError(
             f"Could not connect with any certificate set: {last_exc}"
@@ -293,9 +300,7 @@ class ThermostatConnection:
     async def _connect_with_cert_set(self, cert_set: CertSet) -> None:
         """Connect using a specific certificate set."""
         loop = asyncio.get_running_loop()
-        ssl_ctx = await loop.run_in_executor(
-            None, create_ssl_context, cert_set
-        )
+        ssl_ctx = await loop.run_in_executor(None, create_ssl_context, cert_set)
         _LOGGER.info(
             "Connecting to %s:%s using %s certificates...",
             self._ip,
@@ -327,9 +332,7 @@ class ThermostatConnection:
                 f"Connection timed out after {CONNECT_TIMEOUT}s"
             ) from exc
         except OSError as exc:
-            raise SteamloopConnectionError(
-                f"TCP connect failed: {exc!r}"
-            ) from exc
+            raise SteamloopConnectionError(f"TCP connect failed: {exc!r}") from exc
         self._connected = True
         self._connection_lost_event.clear()
         _LOGGER.info("TLS connected to %s:%s", self._ip, self._port)
@@ -345,10 +348,12 @@ class ThermostatConnection:
     # --- Sending ---
 
     def send(self, msg: dict[str, Any]) -> None:
-        """Send a message to the thermostat.
+        """
+        Send a message to the thermostat.
 
         Raises:
             SteamloopConnectionError: If not connected.
+
         """
         if self._protocol is None:
             raise SteamloopConnectionError("Not connected")
@@ -392,7 +397,8 @@ class ThermostatConnection:
         return self.state.zones.setdefault(zone_id, Zone(zone_id=zone_id))
 
     def _process_event(self, event: dict[str, Any]) -> None:
-        """Process a single event and update thermostat state.
+        """
+        Process a single event and update thermostat state.
 
         Each Event dict contains exactly one key (the event type).
         """
@@ -402,9 +408,7 @@ class ThermostatConnection:
                 try:
                     handler(self, data)
                 except (KeyError, ValueError, TypeError) as exc:
-                    _LOGGER.warning(
-                        "Error handling %s event: %s", event_type, exc
-                    )
+                    _LOGGER.warning("Error handling %s event: %s", event_type, exc)
 
     def _handle_zone_added(self, data: ZoneAddedEvent) -> None:
         zid = data["zone_id"]
@@ -417,9 +421,7 @@ class ThermostatConnection:
     def _handle_indoor_temperature_updated(
         self, data: IndoorTemperatureUpdatedEvent
     ) -> None:
-        self._get_zone(data["zone_id"]).indoor_temperature = data[
-            "indoor_temperature"
-        ]
+        self._get_zone(data["zone_id"]).indoor_temperature = data["indoor_temperature"]
 
     def _handle_temperature_setpoint_updated(
         self, data: TemperatureSetpointUpdatedEvent
@@ -451,9 +453,7 @@ class ThermostatConnection:
     def _handle_fan_mode_updated(self, data: FanModeUpdatedEvent) -> None:
         self.state.fan_mode = FanMode(int(data["fan_mode"]))
 
-    def _handle_emergency_heat_updated(
-        self, data: EmergencyHeatUpdatedEvent
-    ) -> None:
+    def _handle_emergency_heat_updated(self, data: EmergencyHeatUpdatedEvent) -> None:
         self.state.emergency_heat = data["emergency_heat"]
 
     def _handle_indoor_relative_humidity_updated(
@@ -461,14 +461,10 @@ class ThermostatConnection:
     ) -> None:
         self.state.relative_humidity = data["relative_humidity"]
 
-    def _handle_cooling_status_updated(
-        self, data: CoolingStatusUpdatedEvent
-    ) -> None:
+    def _handle_cooling_status_updated(self, data: CoolingStatusUpdatedEvent) -> None:
         self.state.cooling_active = data["cooling_active"]
 
-    def _handle_heating_status_updated(
-        self, data: HeatingStatusUpdatedEvent
-    ) -> None:
+    def _handle_heating_status_updated(self, data: HeatingStatusUpdatedEvent) -> None:
         self.state.heating_active = data["heating_active"]
 
     _EVENT_HANDLERS: dict[str, Callable[..., None]] = {
@@ -488,7 +484,8 @@ class ThermostatConnection:
     # --- Login / Pairing ---
 
     async def login(self) -> LoginResponse:
-        """Authenticate with the thermostat.
+        """
+        Authenticate with the thermostat.
 
         Returns:
             LoginResponse on success.
@@ -496,6 +493,7 @@ class ThermostatConnection:
         Raises:
             AuthenticationError: If authentication fails.
             SteamloopConnectionError: If the connection is lost.
+
         """
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         self._message_queue = queue
@@ -512,9 +510,7 @@ class ThermostatConnection:
             deadline = loop.time() + RESPONSE_TIMEOUT
             while (remaining := deadline - loop.time()) > 0:
                 try:
-                    msg = await asyncio.wait_for(
-                        queue.get(), timeout=remaining
-                    )
+                    msg = await asyncio.wait_for(queue.get(), timeout=remaining)
                 except TimeoutError:
                     break
                 if "Response" not in msg:
@@ -525,21 +521,19 @@ class ThermostatConnection:
                     if login_resp.get("status") == "1":
                         _LOGGER.info("Authenticated successfully")
                         return login_resp
-                    raise AuthenticationError(
-                        f"Authentication failed: {login_resp}"
-                    )
+                    raise AuthenticationError(f"Authentication failed: {login_resp}")
                 if "Error" in resp:
                     err: ErrorResponse = resp["Error"]
                     raise AuthenticationError(
-                        f"Error {err.get('error_type')}: "
-                        f"{err.get('description')}"
+                        f"Error {err.get('error_type')}: {err.get('description')}"
                     )
         finally:
             self._message_queue = None
         raise AuthenticationError("No login response received")
 
     async def pair(self) -> SetSecretKeyRequest:
-        """Pair with the thermostat.
+        """
+        Pair with the thermostat.
 
         The thermostat must be in pairing mode. Sends a login request with
         an empty secret key and waits for the thermostat to send a
@@ -551,6 +545,7 @@ class ThermostatConnection:
         Raises:
             PairingError: If pairing fails or times out.
             SteamloopConnectionError: If the connection is lost.
+
         """
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         self._message_queue = queue
@@ -564,8 +559,7 @@ class ThermostatConnection:
                 },
             )
             _LOGGER.info(
-                "Waiting for pairing response "
-                "(put thermostat in pairing mode)..."
+                "Waiting for pairing response (put thermostat in pairing mode)..."
             )
             loop = asyncio.get_running_loop()
             deadline = loop.time() + PAIRING_TIMEOUT
@@ -576,12 +570,8 @@ class ThermostatConnection:
                     )
                 except TimeoutError:
                     continue
-                if "Request" in msg and "SetSecretKey" in msg.get(
-                    "Request", {}
-                ):
-                    ssk: SetSecretKeyRequest = msg["Request"][
-                        "SetSecretKey"
-                    ]
+                if "Request" in msg and "SetSecretKey" in msg.get("Request", {}):
+                    ssk: SetSecretKeyRequest = msg["Request"]["SetSecretKey"]
                     secret_key = ssk["secret_key"]
                     self._secret_key = secret_key
                     _LOGGER.debug("Received secret key")
@@ -602,9 +592,7 @@ class ThermostatConnection:
                         if status == "1":
                             # Login accepted — the thermostat typically
                             # sends SetSecretKey next, so keep waiting.
-                            _LOGGER.info(
-                                "Login accepted, waiting for secret key..."
-                            )
+                            _LOGGER.info("Login accepted, waiting for secret key...")
                             continue
                         raise PairingError(
                             f"Thermostat rejected pairing (status={status})"
@@ -617,9 +605,7 @@ class ThermostatConnection:
                         )
         finally:
             self._message_queue = None
-        raise PairingError(
-            f"Pairing timeout — no response in {PAIRING_TIMEOUT}s"
-        )
+        raise PairingError(f"Pairing timeout — no response in {PAIRING_TIMEOUT}s")
 
     # --- Background tasks ---
 
@@ -631,7 +617,8 @@ class ThermostatConnection:
                 self._protocol.send({"Heartbeat": {}})
 
     async def _run_loop(self) -> None:
-        """Main background loop: send heartbeats, auto-reconnect on failure.
+        """
+        Main background loop: send heartbeats, auto-reconnect on failure.
 
         Events are dispatched by the protocol's data_received callback.
         This loop just manages heartbeats and reconnection.
@@ -706,7 +693,8 @@ class ThermostatConnection:
         cool_setpoint: str | None = None,
         hold_type: HoldType = HoldType.MANUAL,
     ) -> None:
-        """Set temperature setpoints for a zone.
+        """
+        Set temperature setpoints for a zone.
 
         If a setpoint isn't provided, the current state value is used.
         Deadband is always taken from current state. If the resulting
@@ -749,9 +737,7 @@ class ThermostatConnection:
 
     def set_fan_mode(self, mode: FanMode | int) -> None:
         """Set the fan operating mode."""
-        self.send_request(
-            "UpdateFanMode", {"fan_mode": str(int(mode))}
-        )
+        self.send_request("UpdateFanMode", {"fan_mode": str(int(mode))})
 
     def set_zone_mode(self, zone_id: str, mode: ZoneMode | int) -> None:
         """Set the HVAC mode for a zone."""

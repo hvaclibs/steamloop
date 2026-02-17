@@ -23,7 +23,8 @@ class FanMode(IntEnum):
 
 
 class HoldType(IntEnum):
-    """Temperature hold type.
+    """
+    Temperature hold type.
 
     UNDEFINED: No hold type set.
     MANUAL: Manual override by user (permanent hold).

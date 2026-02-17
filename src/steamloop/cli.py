@@ -71,10 +71,7 @@ def _print_help(active_zone: str) -> None:
     """Display available commands."""
     print("Commands:")
     print("  status                      Show thermostat state")
-    print(
-        f"  zone <id>                   "
-        f"Select active zone (current: {active_zone})"
-    )
+    print(f"  zone <id>                   Select active zone (current: {active_zone})")
     print("  heat <temp>                 Set heat setpoint")
     print("  cool <temp>                 Set cool setpoint")
     print("  setpoint <heat> <cool>      Set both setpoints")
@@ -87,17 +84,13 @@ def _print_help(active_zone: str) -> None:
     print("  quit                        Disconnect and exit")
 
 
-def _cmd_heat(
-    conn: ThermostatConnection, active_zone: str, temp: str
-) -> None:
+def _cmd_heat(conn: ThermostatConnection, active_zone: str, temp: str) -> None:
     """Handle the heat command."""
     print(f"Setting heat setpoint to {temp} (zone {active_zone})")
     conn.set_temperature_setpoint(active_zone, heat_setpoint=temp)
 
 
-def _cmd_cool(
-    conn: ThermostatConnection, active_zone: str, temp: str
-) -> None:
+def _cmd_cool(conn: ThermostatConnection, active_zone: str, temp: str) -> None:
     """Handle the cool command."""
     print(f"Setting cool setpoint to {temp} (zone {active_zone})")
     conn.set_temperature_setpoint(active_zone, cool_setpoint=temp)
@@ -109,7 +102,8 @@ def _handle_command(
     parts: list[str],
     active_zone: str,
 ) -> str | None:
-    """Handle a single interactive command.
+    """
+    Handle a single interactive command.
 
     Returns the (possibly updated) active_zone, or None to quit.
     """
@@ -135,10 +129,7 @@ def _handle_command(
         _cmd_cool(conn, active_zone, parts[1])
 
     elif parts[0] == "setpoint" and len(parts) >= 3:
-        print(
-            f"Setting heat={parts[1]}, cool={parts[2]} "
-            f"(zone {active_zone})"
-        )
+        print(f"Setting heat={parts[1]}, cool={parts[2]} (zone {active_zone})")
         conn.set_temperature_setpoint(
             active_zone, heat_setpoint=parts[1], cool_setpoint=parts[2]
         )
@@ -146,22 +137,15 @@ def _handle_command(
     elif parts[0] == "hold" and len(parts) >= 2:
         ht = _HOLD_MAP.get(parts[1])
         if ht is not None:
-            print(
-                f"Setting hold type to {parts[1]} (zone {active_zone})"
-            )
+            print(f"Setting hold type to {parts[1]} (zone {active_zone})")
             conn.set_temperature_setpoint(active_zone, hold_type=ht)
         else:
-            print(
-                f"Unknown hold type: {parts[1]}. "
-                "Try: manual, schedule, hold"
-            )
+            print(f"Unknown hold type: {parts[1]}. Try: manual, schedule, hold")
 
     elif parts[0] == "mode" and len(parts) >= 2:
         mode = _MODE_MAP.get(parts[1])
         if mode is not None:
-            print(
-                f"Setting zone mode to {parts[1]} (zone {active_zone})"
-            )
+            print(f"Setting zone mode to {parts[1]} (zone {active_zone})")
             conn.set_zone_mode(active_zone, mode)
         else:
             print(f"Unknown mode: {parts[1]}")
@@ -205,10 +189,7 @@ async def _do_pair(ip: str, port: int) -> None:
     """Run pairing mode to obtain a secret key from the thermostat."""
     print("\n=== PAIRING MODE ===")
     print("Make sure the thermostat is in pairing mode!")
-    print(
-        "(On the thermostat: Menu > Settings > "
-        "Remote Access > Pair New Device)\n"
-    )
+    print("(On the thermostat: Menu > Settings > Remote Access > Pair New Device)\n")
 
     conn = ThermostatConnection(ip, port, secret_key="")
     try:
@@ -268,18 +249,14 @@ async def _do_monitor(ip: str, port: int) -> None:
     try:
         async with conn:
             active_zone = "1"
-            print(
-                "\nListening for thermostat events... (Ctrl+C to quit)"
-            )
+            print("\nListening for thermostat events... (Ctrl+C to quit)")
             _print_help(active_zone)
             print()
 
             loop = asyncio.get_running_loop()
             while conn.connected:
                 try:
-                    line = await loop.run_in_executor(
-                        None, sys.stdin.readline
-                    )
+                    line = await loop.run_in_executor(None, sys.stdin.readline)
                     cmd = line.strip()
                 except EOFError:
                     break
@@ -307,9 +284,7 @@ async def _do_monitor(ip: str, port: int) -> None:
 
 def main() -> None:
     """Entry point for the steamloop CLI."""
-    parser = argparse.ArgumentParser(
-        description="Thermostat Local Control CLI"
-    )
+    parser = argparse.ArgumentParser(description="Thermostat Local Control CLI")
     parser.add_argument("ip", help="Thermostat IP address")
     parser.add_argument(
         "--port",
@@ -317,12 +292,8 @@ def main() -> None:
         default=DEFAULT_PORT,
         help=f"Port (default: {DEFAULT_PORT})",
     )
-    parser.add_argument(
-        "--pair", action="store_true", help="Enter pairing mode"
-    )
-    parser.add_argument(
-        "--debug", action="store_true", help="Enable debug logging"
-    )
+    parser.add_argument("--pair", action="store_true", help="Enter pairing mode")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
     level = logging.DEBUG if args.debug else logging.INFO

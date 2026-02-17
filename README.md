@@ -142,18 +142,18 @@ Key design points for using steamloop in a Home Assistant integration:
 
 ### `ThermostatConnection(ip, port=7878, *, secret_key, cert_set=None, device_type="automation", device_id="module")`
 
-| Method | Async | Description |
-|--------|-------|-------------|
-| `connect()` | yes | Establish mTLS connection |
-| `login()` | yes | Authenticate with secret key |
-| `pair()` | yes | Pair and receive secret key |
-| `start_background_tasks()` | no | Start heartbeat + auto-reconnect |
-| `disconnect()` | yes | Close connection and stop tasks |
-| `set_temperature_setpoint(zone_id, *, heat_setpoint, cool_setpoint, hold_type)` | no | Set zone temperature |
-| `set_zone_mode(zone_id, mode)` | no | Set zone HVAC mode |
-| `set_fan_mode(mode)` | no | Set fan mode |
-| `set_emergency_heat(enabled)` | no | Toggle emergency heat |
-| `add_event_callback(fn)` | no | Register event listener (returns unregister callable) |
+| Method                                                                          | Async | Description                                           |
+| ------------------------------------------------------------------------------- | ----- | ----------------------------------------------------- |
+| `connect()`                                                                     | yes   | Establish mTLS connection                             |
+| `login()`                                                                       | yes   | Authenticate with secret key                          |
+| `pair()`                                                                        | yes   | Pair and receive secret key                           |
+| `start_background_tasks()`                                                      | no    | Start heartbeat + auto-reconnect                      |
+| `disconnect()`                                                                  | yes   | Close connection and stop tasks                       |
+| `set_temperature_setpoint(zone_id, *, heat_setpoint, cool_setpoint, hold_type)` | no    | Set zone temperature                                  |
+| `set_zone_mode(zone_id, mode)`                                                  | no    | Set zone HVAC mode                                    |
+| `set_fan_mode(mode)`                                                            | no    | Set fan mode                                          |
+| `set_emergency_heat(enabled)`                                                   | no    | Toggle emergency heat                                 |
+| `add_event_callback(fn)`                                                        | no    | Register event listener (returns unregister callable) |
 
 Supports `async with` for automatic connect/login/disconnect:
 

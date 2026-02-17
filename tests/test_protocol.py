@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import orjson
 import pytest
@@ -69,13 +69,13 @@ def test_data_received_empty_segment() -> None:
 
 def test_data_received_malformed_json() -> None:
     protocol, mock_conn, _ = _make_protocol()
-    protocol.data_received(b'{bad json}\x00')
+    protocol.data_received(b"{bad json}\x00")
     mock_conn._on_message.assert_not_called()
 
 
 def test_data_received_no_json_braces() -> None:
     protocol, mock_conn, _ = _make_protocol()
-    protocol.data_received(b'no braces here\x00')
+    protocol.data_received(b"no braces here\x00")
     mock_conn._on_message.assert_not_called()
 
 

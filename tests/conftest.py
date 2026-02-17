@@ -19,7 +19,8 @@ def mock_transport() -> MagicMock:
 
 @pytest.fixture
 def connection() -> ThermostatConnection:
-    """Return a ThermostatConnection with mock protocol/transport wired up.
+    """
+    Return a ThermostatConnection with mock protocol/transport wired up.
 
     The connection is in the "connected" state with a real
     ThermostatProtocol backed by a mock transport, ready for

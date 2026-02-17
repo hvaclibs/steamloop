@@ -7,7 +7,6 @@ from typing import TypedDict
 
 from .const import FanMode, HoldType, ZoneMode
 
-
 # ---------------------------------------------------------------------------
 # Event TypedDicts — match the wire format exactly (all string values)
 # ---------------------------------------------------------------------------
@@ -38,7 +37,8 @@ class _TemperatureSetpointRequired(TypedDict):
 
 
 class TemperatureSetpointUpdatedEvent(_TemperatureSetpointRequired, total=False):
-    """A zone's temperature setpoints changed.
+    """
+    A zone's temperature setpoints changed.
 
     Only zone_id is guaranteed; other fields may be absent
     when only a subset of setpoints changed.
