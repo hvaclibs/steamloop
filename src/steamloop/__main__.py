@@ -1,5 +1,5 @@
-"""Make the CLI runnable using python -m steamloop."""
+"""Allow running as ``python -m steamloop``."""
 
-from .cli import app
+from steamloop.cli import main
 
-app(prog_name="steamloop")
+main()
