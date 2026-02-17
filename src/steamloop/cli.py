@@ -303,7 +303,9 @@ def main() -> None:
         help=f"Port (default: {DEFAULT_PORT})",
     )
     parser.add_argument("--pair", action="store_true", help="Enter pairing mode")
-    parser.add_argument("--key", help="Secret key from a previous pairing (skip pairing file lookup)")
+    parser.add_argument(
+        "--key", help="Secret key from a previous pairing (skip pairing file lookup)"
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 

@@ -540,9 +540,7 @@ class ThermostatConnection:
             # fully-populated ``state`` when login() returns.
             while True:
                 try:
-                    await asyncio.wait_for(
-                        queue.get(), timeout=INITIAL_STATE_TIMEOUT
-                    )
+                    await asyncio.wait_for(queue.get(), timeout=INITIAL_STATE_TIMEOUT)
                 except TimeoutError:
                     break
             return login_resp
