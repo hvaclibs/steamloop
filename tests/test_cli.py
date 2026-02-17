@@ -537,6 +537,7 @@ async def test_do_monitor_keyboard_interrupt(
 
 
 def test_main_pair_mode() -> None:
+    sentinel = object()
     with (
         patch(
             "steamloop.cli.argparse.ArgumentParser.parse_args",
@@ -544,13 +545,18 @@ def test_main_pair_mode() -> None:
                 ip="192.168.1.100", port=7878, pair=True, debug=False
             ),
         ),
+        patch(
+            "steamloop.cli._do_pair",
+            new_callable=lambda: MagicMock(return_value=sentinel),
+        ),
         patch("steamloop.cli.asyncio.run") as mock_run,
     ):
         main()
-    mock_run.assert_called_once()
+    mock_run.assert_called_once_with(sentinel)
 
 
 def test_main_monitor_mode() -> None:
+    sentinel = object()
     with (
         patch(
             "steamloop.cli.argparse.ArgumentParser.parse_args",
@@ -558,10 +564,14 @@ def test_main_monitor_mode() -> None:
                 ip="192.168.1.100", port=7878, pair=False, debug=False
             ),
         ),
+        patch(
+            "steamloop.cli._do_monitor",
+            new_callable=lambda: MagicMock(return_value=sentinel),
+        ),
         patch("steamloop.cli.asyncio.run") as mock_run,
     ):
         main()
-    mock_run.assert_called_once()
+    mock_run.assert_called_once_with(sentinel)
 
 
 def test_main_debug_mode() -> None:
@@ -571,6 +581,10 @@ def test_main_debug_mode() -> None:
             return_value=MagicMock(
                 ip="192.168.1.100", port=7878, pair=False, debug=True
             ),
+        ),
+        patch(
+            "steamloop.cli._do_monitor",
+            new_callable=lambda: MagicMock(return_value=None),
         ),
         patch("steamloop.cli.asyncio.run"),
         patch("steamloop.cli.logging.basicConfig") as mock_logging,
