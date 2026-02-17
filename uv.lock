@@ -764,7 +764,6 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
-    { name = "sybil", extra = ["pytest"] },
 ]
 docs = [
     { name = "furo" },
@@ -782,27 +781,12 @@ dev = [
     { name = "pytest", specifier = "==9.*" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov", specifier = "==7.*" },
-    { name = "sybil", extras = ["pytest"] },
 ]
 docs = [
     { name = "furo", marker = "python_full_version >= '3.12'" },
     { name = "myst-parser", marker = "python_full_version >= '3.12'" },
     { name = "sphinx", marker = "python_full_version >= '3.12'", specifier = "==9.*" },
     { name = "sphinx-autobuild", marker = "python_full_version >= '3.12'" },
-]
-
-[[package]]
-name = "sybil"
-version = "9.3.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c6/46/bae21847b8d761ddd6ede1811d32818342dbd482c32a2a5805c28d9b2f18/sybil-9.3.0.tar.gz", hash = "sha256:847d1d17b8a857c4bb3f8471b4a57b8affa939a60fbf507e70aa72ad79097c05", size = 89078 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/08/cd3cf2a82570748cfb3142e795044197deff81ad3b70a0b9a9c22331e70a/sybil-9.3.0-py3-none-any.whl", hash = "sha256:0b108b980ab9fac774953042b07fcb5858aa19a38404d0cb42c30c93423ac0c1", size = 39286 },
-]
-
-[package.optional-dependencies]
-pytest = [
-    { name = "pytest" },
 ]
 
 [[package]]

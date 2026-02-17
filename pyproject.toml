@@ -39,7 +39,6 @@ steamloop = "steamloop.cli:main"
 dev = [
   "pytest==9.*",
   "pytest-asyncio",
-  "sybil[pytest]",
   "coverage",
   "pytest-cov==7.*",
 ]
