@@ -24,18 +24,21 @@ classifiers = [
 ]
 
 dependencies = [
-  "rich>=10",
-  "typer>=0.15,<1",
+  "orjson>=3.10",
 ]
+
 urls."Bug Tracker" = "https://github.com/hvaclibs/steamloop/issues"
 urls.Changelog = "https://github.com/hvaclibs/steamloop/blob/main/CHANGELOG.md"
 urls.documentation = "https://steamloop.readthedocs.io"
 urls.repository = "https://github.com/hvaclibs/steamloop"
-scripts.steamloop = "steamloop.cli:app"
+
+[project.scripts]
+steamloop = "steamloop.cli:main"
 
 [dependency-groups]
 dev = [
   "pytest==9.*",
+  "pytest-asyncio",
   "sybil[pytest]",
   "coverage",
   "pytest-cov==7.*",
@@ -86,7 +89,7 @@ lint.isort.known-first-party = [ "steamloop", "tests" ]
 [tool.pyproject-fmt]
 max_supported_python = "3.14"
 
-[tool.pytest]
+[tool.pytest.ini_options]
 minversion = "9.0"
 addopts = [
   "-v",
@@ -97,6 +100,7 @@ addopts = [
   "--cov-report=xml"
 ]
 pythonpath = [ "src" ]
+asyncio_mode = "auto"
 
 [tool.coverage]
 run.branch = true
