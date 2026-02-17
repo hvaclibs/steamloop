@@ -8,9 +8,12 @@ import hashlib
 import logging
 import os
 import ssl
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Self
 
 import orjson
 
@@ -57,10 +60,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _encode_message(msg: dict[str, Any]) -> bytes:
-    """
-    Encode a message for sending.
+    r"""Encode a message for sending.
 
-    Wire format: compact JSON + " " + \\x00
+    Wire format: compact JSON + " " + \x00.
     The thermostat uses null-byte delimiters to find message boundaries.
     """
     return orjson.dumps(msg) + b" \x00"
@@ -151,7 +153,7 @@ class ThermostatProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc: Exception | None) -> None:
         """Called when the connection is lost."""
-        self._connection._on_connection_lost(exc)
+        self._connection._on_connection_lost(exc)  # noqa: SLF001
 
     def send(self, msg: dict[str, Any]) -> None:
         """Send a message to the thermostat (sync — no drain needed)."""
@@ -199,7 +201,7 @@ class ThermostatProtocol(asyncio.Protocol):
                         text[start : end + 1][:200],
                     )
                 else:
-                    self._connection._on_message(msg)
+                    self._connection._on_message(msg)  # noqa: SLF001
 
 
 class ThermostatConnection:
@@ -256,10 +258,8 @@ class ThermostatConnection:
         self._event_callbacks.append(callback)
 
         def _remove() -> None:
-            try:
+            with contextlib.suppress(ValueError):
                 self._event_callbacks.remove(callback)
-            except ValueError:
-                pass
 
         return _remove
 
@@ -288,11 +288,12 @@ class ThermostatConnection:
         for cert_set in CERT_SETS:
             try:
                 await self._connect_with_cert_set(cert_set)
-                self._cert_set = cert_set
-                return
-            except SteamloopConnectionError as exc:
+            except SteamloopConnectionError as exc:  # noqa: PERF203
                 _LOGGER.warning("Failed with %s certs: %s", cert_set.name, exc)
                 last_exc = exc
+            else:
+                self._cert_set = cert_set
+                return
         raise SteamloopConnectionError(
             f"Could not connect with any certificate set: {last_exc}"
         )
@@ -389,7 +390,7 @@ class ThermostatConnection:
         for cb in self._event_callbacks:
             try:
                 cb(msg)
-            except Exception:
+            except Exception:  # noqa: PERF203
                 _LOGGER.exception("Error in event callback")
 
     def _get_zone(self, zone_id: str) -> Zone:
@@ -441,13 +442,11 @@ class ThermostatConnection:
         self, data: SupportedZoneModesUpdatedEvent
     ) -> None:
         modes: list[ZoneMode] = []
-        for m in data["modes"].split(","):
-            m = m.strip()
-            if m:
-                try:
-                    modes.append(ZoneMode(int(m)))
-                except ValueError:
-                    pass
+        for raw in data["modes"].split(","):
+            stripped = raw.strip()
+            if stripped:
+                with contextlib.suppress(ValueError):
+                    modes.append(ZoneMode(int(stripped)))
         self.state.supported_modes = modes
 
     def _handle_fan_mode_updated(self, data: FanModeUpdatedEvent) -> None:
@@ -467,7 +466,7 @@ class ThermostatConnection:
     def _handle_heating_status_updated(self, data: HeatingStatusUpdatedEvent) -> None:
         self.state.heating_active = data["heating_active"]
 
-    _EVENT_HANDLERS: dict[str, Callable[..., None]] = {
+    _EVENT_HANDLERS: ClassVar[dict[str, Callable[..., None]]] = {
         "ZoneAdded": _handle_zone_added,
         "ZoneNameUpdated": _handle_zone_name_updated,
         "IndoorTemperatureUpdated": _handle_indoor_temperature_updated,
@@ -668,7 +667,7 @@ class ThermostatConnection:
         self._close_transport()
         _LOGGER.info("Disconnected")
 
-    async def __aenter__(self) -> ThermostatConnection:
+    async def __aenter__(self) -> Self:
         """Connect, login, and start background tasks."""
         await self.connect()
         try:
@@ -679,7 +678,7 @@ class ThermostatConnection:
         self.start_background_tasks()
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         """Disconnect and stop all background tasks."""
         await self.disconnect()
 

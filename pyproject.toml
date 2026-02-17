@@ -54,24 +54,64 @@ docs = [
 target-version = "py312"
 line-length = 88
 lint.select = [
-  "B",   # flake8-bugbear
-  "D",   # flake8-docstrings
-  "C4",  # flake8-comprehensions
-  "S",   # flake8-bandit
-  "F",   # pyflake
-  "E",   # pycodestyle
-  "W",   # pycodestyle
-  "UP",  # pyupgrade
-  "I",   # isort
-  "RUF", # ruff specific
+  "ASYNC", # async rules
+  "B",     # flake8-bugbear
+  "BLE",   # flake8-blind-except
+  "C",     # complexity + comprehensions
+  "COM818", # Trailing comma on bare tuple prohibited
+  "D",     # flake8-docstrings
+  "DTZ003", # Use datetime.now(tz=) instead of datetime.utcnow()
+  "DTZ004", # Use datetime.fromtimestamp(ts, tz=) instead of datetime.utcfromtimestamp(ts)
+  "E",     # pycodestyle
+  "F",     # pyflakes
+  "FLY",   # flynt
+  "FURB",  # refurb
+  "G",     # flake8-logging-format
+  "I",     # isort
+  "ICN001", # import conventions; {name} should be imported as {asname}
+  "INP",   # flake8-no-pep420
+  "ISC",   # flake8-implicit-str-concat
+  "LOG",   # flake8-logging
+  "N804",  # First argument of a class method should be named cls
+  "N805",  # First argument of a method should be named self
+  "N815",  # Variable {name} in class scope should not be mixedCase
+  "PERF",  # Perflint
+  "PGH",   # pygrep-hooks
+  "PIE",   # flake8-pie
+  "PL",    # pylint
+  "PT",    # flake8-pytest-style
+  "PTH",   # flake8-pathlib
+  "PYI",   # flake8-pyi
+  "RET",   # flake8-return
+  "RSE",   # flake8-raise
+  "RUF",   # ruff specific
+  "S",     # flake8-bandit
+  "SIM",   # flake8-simplify
+  "SLF",   # flake8-self
+  "SLOT",  # flake8-slots
+  "T100",  # Trace found: {name} used
+  "T20",   # flake8-print
+  "TC",    # flake8-type-checking
+  "TID",   # Tidy imports
+  "TRY",   # tryceratops
+  "UP",    # pyupgrade
+  "W",     # pycodestyle
 ]
 lint.ignore = [
-  "D203", # 1 blank line required before class docstring
-  "D212", # Multi-line docstring summary should start at the first line
-  "D100", # Missing docstring in public module
-  "D104", # Missing docstring in public package
-  "D107", # Missing docstring in `__init__`
-  "D401", # First line of docstring should be in imperative mood
+  "D203",    # 1 blank line required before class docstring
+  "D212",    # Multi-line docstring summary should start at the first line
+  "D213",    # Multi-line docstring summary should start at the second line
+  "D100",    # Missing docstring in public module
+  "D104",    # Missing docstring in public package
+  "D107",    # Missing docstring in `__init__`
+  "D401",    # First line of docstring should be in imperative mood
+  "COM812",  # May conflict with the formatter
+  "ISC001",  # May conflict with the formatter
+  "TRY003",  # Avoid specifying long messages outside the exception class
+  "TRY301",  # raise within try — used for exception wrapping
+  "PLR0913", # Too many arguments to function call
+  "PLR0911", # Too many return statements
+  "SIM110",  # Reimplementing builtin — can be slower
 ]
 lint.per-file-ignores."conftest.py" = [ "D100" ]
 lint.per-file-ignores."docs/conf.py" = [ "D100" ]
@@ -82,7 +122,24 @@ lint.per-file-ignores."tests/**/*" = [
   "D102",
   "D103",
   "D104",
+  "INP001",
+  "PLC0415",
+  "PLR2004",
+  "PT011",
+  "PT012",
   "S101",
+  "S105",
+  "S106",
+  "SLF001",
+  "TC002",
+  "TRY003",
+]
+lint.per-file-ignores."src/steamloop/cli.py" = [
+  "C901",    # _handle_command is inherently a command dispatcher
+  "PLR0912", # _handle_command has many branches by design
+  "PLR0915", # _handle_command has many statements by design
+  "PLR2004", # magic values in CLI arg counts are clear
+  "T201",    # print() is the CLI output mechanism
 ]
 lint.isort.known-first-party = [ "steamloop", "tests" ]
 

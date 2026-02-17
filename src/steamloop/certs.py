@@ -6,9 +6,12 @@ import base64
 import ssl
 import tempfile
 import zlib
-from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 # Primary client cert + key (zlib compressed, base64 encoded)
 _PRIMARY_CHAIN = (

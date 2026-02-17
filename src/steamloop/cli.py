@@ -6,14 +6,16 @@ import argparse
 import asyncio
 import logging
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import orjson
 
 from .connection import ThermostatConnection, load_pairing, save_pairing
 from .const import DEFAULT_PORT, FanMode, HoldType, ZoneMode
 from .exceptions import SteamloopConnectionError, SteamloopError
-from .models import ThermostatState
+
+if TYPE_CHECKING:
+    from .models import ThermostatState
 
 _LOGGER = logging.getLogger(__name__)
 
