@@ -43,6 +43,7 @@ HEARTBEAT_INTERVAL = 55  # seconds (thermostat expects every 60s)
 CONNECT_TIMEOUT = 10
 PAIRING_TIMEOUT = 120
 RESPONSE_TIMEOUT = 10
+INITIAL_STATE_TIMEOUT = 1  # seconds to wait for initial state after login
 RECONNECT_DELAY = 5  # initial delay before first reconnect attempt
 RECONNECT_MAX = 300  # max delay between reconnect attempts (5 minutes)
 BACKOFF_FACTOR = 2  # multiply delay by this on each failure

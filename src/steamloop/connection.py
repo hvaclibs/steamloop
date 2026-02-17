@@ -23,6 +23,7 @@ from .const import (
     CONNECT_TIMEOUT,
     DEFAULT_PORT,
     HEARTBEAT_INTERVAL,
+    INITIAL_STATE_TIMEOUT,
     PAIRING_TIMEOUT,
     RECONNECT_DELAY,
     RECONNECT_MAX,
@@ -486,6 +487,10 @@ class ThermostatConnection:
         """
         Authenticate with the thermostat.
 
+        After receiving the login response, waits for the initial burst
+        of state events (zone discovery, temperatures, etc.) to arrive
+        before returning. This ensures ``state`` is fully populated.
+
         Returns:
             LoginResponse on success.
 
@@ -507,6 +512,7 @@ class ThermostatConnection:
             )
             loop = asyncio.get_running_loop()
             deadline = loop.time() + RESPONSE_TIMEOUT
+            login_resp: LoginResponse | None = None
             while (remaining := deadline - loop.time()) > 0:
                 try:
                     msg = await asyncio.wait_for(queue.get(), timeout=remaining)
@@ -516,19 +522,32 @@ class ThermostatConnection:
                     continue
                 resp = msg["Response"]
                 if "LoginResponse" in resp:
-                    login_resp: LoginResponse = resp["LoginResponse"]
+                    login_resp = resp["LoginResponse"]
                     if login_resp.get("status") == "1":
                         _LOGGER.info("Authenticated successfully")
-                        return login_resp
+                        break
                     raise AuthenticationError(f"Authentication failed: {login_resp}")
                 if "Error" in resp:
                     err: ErrorResponse = resp["Error"]
                     raise AuthenticationError(
                         f"Error {err.get('error_type')}: {err.get('description')}"
                     )
+            if login_resp is None:
+                raise AuthenticationError("No login response received")
+            # Drain the initial state burst — the thermostat sends zone
+            # discovery events right after the login response.  Keep
+            # reading until the stream goes quiet so that callers see a
+            # fully-populated ``state`` when login() returns.
+            while True:
+                try:
+                    await asyncio.wait_for(
+                        queue.get(), timeout=INITIAL_STATE_TIMEOUT
+                    )
+                except TimeoutError:
+                    break
+            return login_resp
         finally:
             self._message_queue = None
-        raise AuthenticationError("No login response received")
 
     async def pair(self) -> SetSecretKeyRequest:
         """
