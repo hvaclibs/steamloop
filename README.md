@@ -58,6 +58,12 @@ This saves a pairing file in the current directory with the secret key.
 steamloop 192.168.1.100
 ```
 
+If already paired, you can pass the secret key directly to skip the pairing file:
+
+```bash
+steamloop 192.168.1.100 --key YOUR_SECRET_KEY
+```
+
 Interactive commands: `status`, `heat <temp>`, `cool <temp>`, `mode <off|auto|cool|heat>`, `fan <auto|on|circulate>`, `eheat <on|off>`, `help`.
 
 ## Library Usage

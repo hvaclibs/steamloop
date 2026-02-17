@@ -349,7 +349,8 @@ async def test_login_success(connection: ThermostatConnection) -> None:
     asyncio.get_event_loop().call_soon(lambda: connection._on_message(resp))
     # Need a small delay for the queue to process
     task = asyncio.create_task(_feed_response(connection, resp))
-    result = await connection.login()
+    with patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.05):
+        result = await connection.login()
     assert result["status"] == "1"
     await task
 
@@ -375,6 +376,7 @@ async def test_login_error_response(
 async def test_login_timeout(connection: ThermostatConnection) -> None:
     with (
         patch("steamloop.connection.RESPONSE_TIMEOUT", 0.05),
+        patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.01),
         pytest.raises(AuthenticationError, match="No login response"),
     ):
         await connection.login()
@@ -700,8 +702,41 @@ async def test_login_skips_non_response(
         connection._on_message({"Response": {"LoginResponse": {"status": "1"}}})
 
     task = asyncio.create_task(_feed())
-    result = await connection.login()
+    with patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.05):
+        result = await connection.login()
     assert result["status"] == "1"
+    await task
+
+
+async def test_login_drains_initial_state(
+    connection: ThermostatConnection,
+) -> None:
+    """Login waits for the initial state burst after LoginResponse."""
+
+    async def _feed() -> None:
+        await asyncio.sleep(0.01)
+        connection._on_message({"Response": {"LoginResponse": {"status": "1"}}})
+        # Thermostat sends initial state burst after login response
+        await asyncio.sleep(0.01)
+        connection._on_message({"Event": {"ZoneAdded": {"zone_id": "1"}}})
+        connection._on_message(
+            {"Event": {"ZoneNameUpdated": {"zone_id": "1", "zone_name": "Main"}}}
+        )
+        await asyncio.sleep(0.01)
+        connection._on_message({"Event": {"ZoneAdded": {"zone_id": "2"}}})
+        connection._on_message(
+            {"Event": {"ZoneNameUpdated": {"zone_id": "2", "zone_name": "Upstairs"}}}
+        )
+
+    task = asyncio.create_task(_feed())
+    with patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.15):
+        result = await connection.login()
+    assert result["status"] == "1"
+    # Both zones should be fully populated by the time login returns
+    assert "1" in connection.state.zones
+    assert "2" in connection.state.zones
+    assert connection.state.zones["1"].name == "Main"
+    assert connection.state.zones["2"].name == "Upstairs"
     await task
 
 
