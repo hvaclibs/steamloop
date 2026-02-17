@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.2.0 (2026-02-17)
+
+### Features
+
+- Drain initial state after login and add --key cli flag ([`78a57ec`](https://github.com/hvaclibs/steamloop/commit/78a57eca8fd2f1dc9daca7d8339093d370228c37))
+- Drain initial state after login and add --key cli flag ([`78a57ec`](https://github.com/hvaclibs/steamloop/commit/78a57eca8fd2f1dc9daca7d8339093d370228c37))
+
+### Documentation
+
+- Fix thermostat pairing navigation path ([`3d7f7c6`](https://github.com/hvaclibs/steamloop/commit/3d7f7c63b55e46158840b5fc383862d0bc098fdc))
+- Fix thermostat pairing navigation path in readme ([`3d7f7c6`](https://github.com/hvaclibs/steamloop/commit/3d7f7c63b55e46158840b5fc383862d0bc098fdc))
+
 ## v1.1.0 (2026-02-17)
 
 ### Features
