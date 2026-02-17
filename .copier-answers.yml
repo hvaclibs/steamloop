@@ -1,0 +1,23 @@
+# Changes here will be overwritten by Copier
+_commit: a5b66c5
+_src_path: gh:browniebroke/pypackage-template
+add_me_as_contributor: false
+cli_name: steamloop
+copyright_year: '2026'
+documentation: true
+email: nick@koston.org
+full_name: J. Nick Koston
+github_username: hvaclibs
+has_cli: true
+initial_commit: true
+is_django_package: false
+open_source_license: Apache-2.0
+open_with_editor: false
+package_name: steamloop
+project_name: steamloop
+project_short_description: Local control for choochoo based thermostats
+project_slug: steamloop
+run_uv_sync: true
+setup_github: true
+setup_pre_commit: true
+
