@@ -51,7 +51,7 @@ def test_data_received_multiple_messages() -> None:
 
 def test_data_received_partial_then_complete() -> None:
     protocol, mock_conn, _ = _make_protocol()
-    msg = {"Heartbeat": {}}
+    msg: dict[str, dict[str, str]] = {"Heartbeat": {}}
     full = orjson.dumps(msg) + b" \x00"
     mid = len(full) // 2
     protocol.data_received(full[:mid])

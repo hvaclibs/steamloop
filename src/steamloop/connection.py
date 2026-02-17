@@ -95,7 +95,7 @@ async def load_pairing(ip: str, directory: Path | None = None) -> dict[str, str]
 def _load_pairing_sync(path: Path) -> dict[str, str] | None:
     """Synchronous pairing file read."""
     try:
-        return orjson.loads(path.read_bytes())  # type: ignore[no-any-return]
+        return orjson.loads(path.read_bytes())
     except FileNotFoundError:
         return None
 
@@ -142,9 +142,9 @@ class ThermostatProtocol(asyncio.Protocol):
         self._transport: asyncio.Transport | None = None
         self._buf = bytearray()
 
-    def connection_made(self, transport: asyncio.Transport) -> None:
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
         """Called when the TLS connection is established."""
-        self._transport = transport
+        self._transport = transport  # type: ignore[assignment]
 
     def data_received(self, data: bytes) -> None:
         """Called when data is received from the thermostat."""

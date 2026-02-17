@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import ssl
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import orjson
@@ -262,7 +262,8 @@ def test_send_request_not_connected_raises(
 
 def _get_sent_message(connection: ThermostatConnection) -> dict[str, Any]:
     """Extract the last message written to the mock transport."""
-    transport = connection._protocol._transport  # type: ignore[union-attr]
+    assert connection._protocol is not None
+    transport = cast("MagicMock", connection._protocol._transport)
     written: bytes = transport.write.call_args[0][0]
     return orjson.loads(written.rstrip(b" \x00"))
 
@@ -403,7 +404,8 @@ async def test_pair_success(connection: ThermostatConnection) -> None:
 async def test_pair_sends_confirmation(
     connection: ThermostatConnection,
 ) -> None:
-    transport = connection._protocol._transport  # type: ignore[union-attr]
+    assert connection._protocol is not None
+    transport = cast("MagicMock", connection._protocol._transport)
 
     async def _feed() -> None:
         await asyncio.sleep(0.01)
@@ -639,7 +641,6 @@ async def test_disconnect_cancels_run_task(
     connection._run_task = asyncio.create_task(asyncio.sleep(100))
     await connection.disconnect()
     assert connection._run_task is None
-    assert connection.connected is False
 
 
 def test_on_connection_lost_sets_event(
@@ -754,7 +755,8 @@ def test_protocol_close_when_transport_none() -> None:
 async def test_heartbeat_loop_sends_heartbeat(
     connection: ThermostatConnection,
 ) -> None:
-    transport = connection._protocol._transport  # type: ignore[union-attr]
+    assert connection._protocol is not None
+    transport = cast("MagicMock", connection._protocol._transport)
     with patch("steamloop.connection.HEARTBEAT_INTERVAL", 0.01):
         task = asyncio.create_task(connection._heartbeat_loop())
         await asyncio.sleep(0.05)

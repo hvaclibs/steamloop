@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from steamloop.exceptions import (
     AuthenticationError,
     CommandError,
@@ -19,15 +21,10 @@ def test_exception_hierarchy() -> None:
     assert issubclass(SteamloopError, Exception)
 
 
-def test_exceptions_are_catchable() -> None:
-    with __import__("pytest").raises(SteamloopError):
-        raise SteamloopConnectionError("test")
-
-    with __import__("pytest").raises(SteamloopError):
-        raise AuthenticationError("test")
-
-    with __import__("pytest").raises(SteamloopError):
-        raise PairingError("test")
-
-    with __import__("pytest").raises(SteamloopError):
-        raise CommandError("test")
+@pytest.mark.parametrize(
+    "exc_class",
+    [SteamloopConnectionError, AuthenticationError, PairingError, CommandError],
+)
+def test_exceptions_are_catchable(exc_class: type[SteamloopError]) -> None:
+    with pytest.raises(SteamloopError):
+        raise exc_class("test")

@@ -114,7 +114,7 @@ lint.ignore = [
   "SIM110",  # Reimplementing builtin — can be slower
 ]
 lint.per-file-ignores."conftest.py" = [ "D100" ]
-lint.per-file-ignores."docs/conf.py" = [ "D100" ]
+lint.per-file-ignores."docs/conf.py" = [ "D100", "INP001" ]
 lint.per-file-ignores."setup.py" = [ "D100" ]
 lint.per-file-ignores."tests/**/*" = [
   "D100",
