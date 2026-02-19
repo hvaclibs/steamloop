@@ -542,7 +542,7 @@ def test_main_pair_mode() -> None:
         patch(
             "steamloop.cli.argparse.ArgumentParser.parse_args",
             return_value=MagicMock(
-                ip="192.168.1.100", port=7878, pair=True, debug=False
+                ip="192.168.1.100", port=7878, pair=True, key=None, debug=False
             ),
         ),
         patch(
@@ -561,16 +561,37 @@ def test_main_monitor_mode() -> None:
         patch(
             "steamloop.cli.argparse.ArgumentParser.parse_args",
             return_value=MagicMock(
-                ip="192.168.1.100", port=7878, pair=False, debug=False
+                ip="192.168.1.100", port=7878, pair=False, key=None, debug=False
             ),
         ),
         patch(
             "steamloop.cli._do_monitor",
             new_callable=lambda: MagicMock(return_value=sentinel),
-        ),
+        ) as mock_monitor,
         patch("steamloop.cli.asyncio.run") as mock_run,
     ):
         main()
+    mock_monitor.assert_called_once_with("192.168.1.100", 7878, secret_key=None)
+    mock_run.assert_called_once_with(sentinel)
+
+
+def test_main_monitor_with_key() -> None:
+    sentinel = object()
+    with (
+        patch(
+            "steamloop.cli.argparse.ArgumentParser.parse_args",
+            return_value=MagicMock(
+                ip="192.168.1.100", port=7878, pair=False, key="my-key", debug=False
+            ),
+        ),
+        patch(
+            "steamloop.cli._do_monitor",
+            new_callable=lambda: MagicMock(return_value=sentinel),
+        ) as mock_monitor,
+        patch("steamloop.cli.asyncio.run") as mock_run,
+    ):
+        main()
+    mock_monitor.assert_called_once_with("192.168.1.100", 7878, secret_key="my-key")
     mock_run.assert_called_once_with(sentinel)
 
 
@@ -579,7 +600,7 @@ def test_main_debug_mode() -> None:
         patch(
             "steamloop.cli.argparse.ArgumentParser.parse_args",
             return_value=MagicMock(
-                ip="192.168.1.100", port=7878, pair=False, debug=True
+                ip="192.168.1.100", port=7878, pair=False, key=None, debug=True
             ),
         ),
         patch(
@@ -594,3 +615,44 @@ def test_main_debug_mode() -> None:
 
     mock_logging.assert_called_once()
     assert mock_logging.call_args[1]["level"] == logging.DEBUG
+
+
+async def test_do_monitor_with_key_skips_pairing_file(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """When secret_key is provided, pairing file is not loaded."""
+    mock_conn = MagicMock()
+    mock_conn.connected = True
+    mock_conn.state = ThermostatState()
+    mock_conn.add_event_callback = MagicMock(return_value=lambda: None)
+
+    async def _mock_aenter(self: Any) -> MagicMock:
+        return mock_conn
+
+    mock_conn.__aenter__ = _mock_aenter
+    mock_conn.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch(
+            "steamloop.cli.load_pairing",
+            new_callable=AsyncMock,
+        ) as mock_load,
+        patch(
+            "steamloop.cli.ThermostatConnection",
+            return_value=mock_conn,
+        ) as mock_cls,
+        patch("steamloop.cli.sys.stdin") as mock_stdin,
+    ):
+        mock_stdin.readline.side_effect = KeyboardInterrupt
+        await _do_monitor("192.168.1.100", 7878, secret_key="my-key")
+
+    mock_load.assert_not_called()
+    mock_cls.assert_called_once_with(
+        "192.168.1.100",
+        7878,
+        secret_key="my-key",
+        device_type="automation",
+        device_id="module",
+    )
+    captured = capsys.readouterr()
+    assert "provided secret key" in captured.out

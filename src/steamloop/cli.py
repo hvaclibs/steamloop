@@ -225,22 +225,30 @@ async def _do_pair(ip: str, port: int) -> None:
     await _do_monitor(ip, port)
 
 
-async def _do_monitor(ip: str, port: int) -> None:
+async def _do_monitor(ip: str, port: int, secret_key: str | None = None) -> None:
     """Run monitoring mode with interactive command loop."""
-    pairing = await load_pairing(ip)
-    if not pairing:
-        print("No pairing found. Run with --pair first.")
-        return
-
-    print("\n=== MONITORING MODE ===")
-    print(f"Using saved pairing for {ip}")
+    if secret_key is not None:
+        print("\n=== MONITORING MODE ===")
+        print(f"Using provided secret key for {ip}")
+        device_type = "automation"
+        device_id = "module"
+    else:
+        pairing = await load_pairing(ip)
+        if not pairing:
+            print("No pairing found. Run with --pair or --key first.")
+            return
+        print("\n=== MONITORING MODE ===")
+        print(f"Using saved pairing for {ip}")
+        secret_key = pairing["secret_key"]
+        device_type = pairing.get("device_type", "automation")
+        device_id = pairing.get("device_id", "module")
 
     conn = ThermostatConnection(
         ip,
         port,
-        secret_key=pairing["secret_key"],
-        device_type=pairing.get("device_type", "automation"),
-        device_id=pairing.get("device_id", "module"),
+        secret_key=secret_key,
+        device_type=device_type,
+        device_id=device_id,
     )
 
     def on_event(msg: dict[str, Any]) -> None:
@@ -295,6 +303,9 @@ def main() -> None:
         help=f"Port (default: {DEFAULT_PORT})",
     )
     parser.add_argument("--pair", action="store_true", help="Enter pairing mode")
+    parser.add_argument(
+        "--key", help="Secret key from a previous pairing (skip pairing file lookup)"
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
@@ -308,4 +319,4 @@ def main() -> None:
     if args.pair:
         asyncio.run(_do_pair(args.ip, args.port))
     else:
-        asyncio.run(_do_monitor(args.ip, args.port))
+        asyncio.run(_do_monitor(args.ip, args.port, secret_key=args.key))
