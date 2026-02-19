@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-_EHEAT_LABELS = {"": "N/A", "1": "On", "2": "Off"}
-_ACTIVE_LABELS = {"": "N/A", "1": "Inactive", "2": "Active"}
+_EHEAT_LABELS = {"": "N/A", "0": "Off", "1": "On"}
+_ACTIVE_LABELS = {"": "N/A", "0": "Inactive", "1": "Active"}
 
 _HOLD_MAP: dict[str, HoldType] = {
     "manual": HoldType.MANUAL,
