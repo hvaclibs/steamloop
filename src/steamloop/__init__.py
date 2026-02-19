@@ -1,6 +1,6 @@
 """Local control for thermostat devices over mTLS."""
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 from .connection import ThermostatConnection, load_pairing, save_pairing
 from .const import DEFAULT_PORT, FanMode, HoldType, ZoneMode

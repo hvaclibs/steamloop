@@ -15,7 +15,7 @@ from sphinx.ext import apidoc
 project = "steamloop"
 copyright = "2026, J. Nick Koston"
 author = "J. Nick Koston"
-release = "1.2.0"
+release = "1.2.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

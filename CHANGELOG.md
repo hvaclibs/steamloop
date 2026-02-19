@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.1 (2026-02-19)
+
+### Bug fixes
+
+- Correct active status and emergency heat label mappings ([`8d52674`](https://github.com/hvaclibs/steamloop/commit/8d52674cef6149ed1e41f038a44b3d55edd2f0d3))
+- Correct active status and emergency heat label mappings ([`8d52674`](https://github.com/hvaclibs/steamloop/commit/8d52674cef6149ed1e41f038a44b3d55edd2f0d3))
+- Add "2" as active state for cooling/heating status ([`8d52674`](https://github.com/hvaclibs/steamloop/commit/8d52674cef6149ed1e41f038a44b3d55edd2f0d3))
+- Distinguish idle vs active for cooling/heating status ([`8d52674`](https://github.com/hvaclibs/steamloop/commit/8d52674cef6149ed1e41f038a44b3d55edd2f0d3))
+
 ## v1.2.0 (2026-02-17)
 
 ### Features
