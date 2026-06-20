@@ -47,6 +47,7 @@ from .models import (
     IndoorRelativeHumidityUpdatedEvent,
     IndoorTemperatureUpdatedEvent,
     LoginResponse,
+    Preset,
     SetSecretKeyRequest,
     SupportedZoneModesUpdatedEvent,
     TemperatureSetpointUpdatedEvent,
@@ -761,6 +762,27 @@ class ThermostatConnection:
             "UpdateZoneMode",
             {"zone_id": zone_id, "zone_mode": str(int(mode))},
         )
+
+    def apply_preset(self, zone_id: str, preset: Preset) -> None:
+        """
+        Apply a client-side :class:`Preset` to a zone.
+
+        Issues only verified commands (mode, setpoint, fan). The thermostat
+        has no native preset command, so this is a convenience wrapper that
+        bundles existing commands — not a protocol-level feature. ``None``
+        fields on the preset are skipped.
+        """
+        if preset.zone_mode is not None:
+            self.set_zone_mode(zone_id, preset.zone_mode)
+        if preset.heat_setpoint is not None or preset.cool_setpoint is not None:
+            self.set_temperature_setpoint(
+                zone_id,
+                heat_setpoint=preset.heat_setpoint,
+                cool_setpoint=preset.cool_setpoint,
+                hold_type=preset.hold_type,
+            )
+        if preset.fan_mode is not None:
+            self.set_fan_mode(preset.fan_mode)
 
     def set_emergency_heat(self, enabled: bool) -> None:
         """Enable or disable emergency heat."""

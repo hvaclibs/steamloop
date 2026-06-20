@@ -22,7 +22,7 @@ from steamloop.exceptions import (
     PairingError,
     SteamloopConnectionError,
 )
-from steamloop.models import ThermostatState, Zone
+from steamloop.models import Preset, ThermostatState, Zone
 
 from .conftest import make_event
 
@@ -993,3 +993,79 @@ def test_deadband_exact_gap_no_adjustment(
     req = msg["Request"]["UpdateTemperatureSetpoint"]
     assert req["heat_setpoint"] == "70"
     assert req["cool_setpoint"] == "73"  # 73 - 70 = 3, exactly meets deadband
+
+
+# ---------------------------------------------------------------------------
+# apply_preset — client-side preset bundles
+# ---------------------------------------------------------------------------
+
+
+def _get_sent_messages(connection: ThermostatConnection) -> list[dict[str, Any]]:
+    """Extract every message written to the mock transport, in order."""
+    assert connection._protocol is not None
+    transport = cast("MagicMock", connection._protocol._transport)
+    return [
+        orjson.loads(call.args[0].rstrip(b" \x00"))
+        for call in transport.write.call_args_list
+    ]
+
+
+def test_apply_preset_full_bundle(connection: ThermostatConnection) -> None:
+    """A complete preset issues mode, setpoint, and fan commands."""
+    connection.state.zones["1"] = Zone(
+        zone_id="1", heat_setpoint="68", cool_setpoint="78", deadband="3"
+    )
+    preset = Preset(
+        name="Comfort",
+        zone_mode=ZoneMode.AUTO,
+        heat_setpoint="70",
+        cool_setpoint="76",
+        fan_mode=FanMode.CIRCULATE,
+        hold_type=HoldType.HOLD,
+    )
+    connection.apply_preset("1", preset)
+    sent = _get_sent_messages(connection)
+    commands = [next(iter(m["Request"])) for m in sent]
+    assert commands == [
+        "UpdateZoneMode",
+        "UpdateTemperatureSetpoint",
+        "UpdateFanMode",
+    ]
+    setpoint = sent[1]["Request"]["UpdateTemperatureSetpoint"]
+    assert setpoint["heat_setpoint"] == "70"
+    assert setpoint["cool_setpoint"] == "76"
+    assert setpoint["hold_type"] == str(int(HoldType.HOLD))
+
+
+def test_apply_preset_skips_none_fields(connection: ThermostatConnection) -> None:
+    """A preset with only setpoints sends no mode or fan command."""
+    connection.state.zones["1"] = Zone(
+        zone_id="1", heat_setpoint="68", cool_setpoint="78", deadband="3"
+    )
+    preset = Preset(name="Away", heat_setpoint="60", cool_setpoint="85")
+    connection.apply_preset("1", preset)
+    sent = _get_sent_messages(connection)
+    commands = [next(iter(m["Request"])) for m in sent]
+    assert commands == ["UpdateTemperatureSetpoint"]
+
+
+def test_apply_preset_mode_only(connection: ThermostatConnection) -> None:
+    """A mode-only preset sends a single mode command and nothing else."""
+    preset = Preset(name="Off", zone_mode=ZoneMode.OFF)
+    connection.apply_preset("1", preset)
+    sent = _get_sent_messages(connection)
+    assert len(sent) == 1
+    assert sent[0]["Request"]["UpdateZoneMode"]["zone_mode"] == str(int(ZoneMode.OFF))
+
+
+def test_apply_preset_defaults_to_manual_hold(
+    connection: ThermostatConnection,
+) -> None:
+    """Setpoint commands from a preset default to a manual hold."""
+    connection.state.zones["1"] = Zone(
+        zone_id="1", heat_setpoint="68", cool_setpoint="78", deadband="3"
+    )
+    connection.apply_preset("1", Preset(name="Home", heat_setpoint="71"))
+    msg = _get_sent_message(connection)
+    req = msg["Request"]["UpdateTemperatureSetpoint"]
+    assert req["hold_type"] == str(int(HoldType.MANUAL))

@@ -124,6 +124,26 @@ pairing = await load_pairing(ip)
 conn = ThermostatConnection(ip, secret_key=pairing["secret_key"])
 ```
 
+### Presets
+
+The local protocol has **no native preset command** (unlike the Nexia/Trane
+cloud API). A `Preset` is a client-side convenience: it bundles the verified
+zone commands — mode, setpoints, hold, and fan — under a name and applies them
+together. `None` fields are skipped, so a preset can change only what it cares
+about. This is enough to back a Home Assistant `preset_modes` list.
+
+```python
+from steamloop import Preset, ZoneMode, FanMode, HoldType
+
+PRESETS = {
+    "home": Preset("home", zone_mode=ZoneMode.AUTO, heat_setpoint="70", cool_setpoint="76"),
+    "away": Preset("away", heat_setpoint="60", cool_setpoint="85", hold_type=HoldType.HOLD),
+    "sleep": Preset("sleep", heat_setpoint="66", cool_setpoint="72", fan_mode=FanMode.AUTO),
+}
+
+conn.apply_preset("1", PRESETS["away"])
+```
+
 ### Event Callbacks
 
 ```python
@@ -158,6 +178,7 @@ Key design points for using steamloop in a Home Assistant integration:
 | `set_temperature_setpoint(zone_id, *, heat_setpoint, cool_setpoint, hold_type)` | no    | Set zone temperature                                  |
 | `set_zone_mode(zone_id, mode)`                                                  | no    | Set zone HVAC mode                                    |
 | `set_fan_mode(mode)`                                                            | no    | Set fan mode                                          |
+| `apply_preset(zone_id, preset)`                                                 | no    | Apply a client-side `Preset` bundle                   |
 | `set_emergency_heat(enabled)`                                                   | no    | Toggle emergency heat                                 |
 | `add_event_callback(fn)`                                                        | no    | Register event listener (returns unregister callable) |
 
