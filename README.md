@@ -134,6 +134,16 @@ remove = conn.add_event_callback(on_event)
 # later: remove() to unregister
 ```
 
+### Connection-State Callbacks
+
+```python
+def on_availability(available: bool):
+    print("Thermostat available" if available else "Thermostat offline")
+
+remove = conn.add_connection_callback(on_availability)
+# fires True after login (incl. auto-reconnect), False when the connection drops
+```
+
 ## Home Assistant Integration
 
 Key design points for using steamloop in a Home Assistant integration:
@@ -142,6 +152,7 @@ Key design points for using steamloop in a Home Assistant integration:
 - **State is always fresh** — the `asyncio.Protocol` receives events via `data_received()` and updates `conn.state` automatically. Just read properties directly.
 - **Auto-reconnect** — after calling `start_background_tasks()`, the connection automatically reconnects with exponential backoff (5s, 10s, 20s, ... up to 5 min).
 - **Event callbacks** — use `add_event_callback()` to trigger `async_write_ha_state()` when the thermostat pushes updates.
+- **Availability** — use `add_connection_callback()` (or read the `available` property) to drive entity availability across auto-reconnect cycles.
 - **Multi-zone** — create one `ClimateEntity` per `conn.state.zones` entry. Zones are populated automatically after login.
 
 ## API Reference
@@ -160,6 +171,8 @@ Key design points for using steamloop in a Home Assistant integration:
 | `set_fan_mode(mode)`                                                            | no    | Set fan mode                                          |
 | `set_emergency_heat(enabled)`                                                   | no    | Toggle emergency heat                                 |
 | `add_event_callback(fn)`                                                        | no    | Register event listener (returns unregister callable) |
+| `add_connection_callback(fn)`                                                   | no    | Register availability listener `fn(available: bool)` (returns unregister callable) |
+| `available`                                                                     | no    | Property: True when connected *and* authenticated     |
 
 Supports `async with` for automatic connect/login/disconnect:
 
