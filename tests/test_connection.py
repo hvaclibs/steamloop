@@ -297,6 +297,22 @@ def test_set_temperature_setpoint_defaults(
     assert req["deadband"] == "3"
 
 
+def test_set_temperature_setpoint_known_zone_empty_setpoints(
+    connection: ThermostatConnection,
+) -> None:
+    """A zone discovered before its setpoint burst has empty setpoints.
+
+    Setting a setpoint then must not crash on float("") — the missing
+    opposite setpoint should fall back to the default.
+    """
+    connection.state.zones["1"] = Zone(zone_id="1")  # no setpoints yet
+    connection.set_temperature_setpoint("1", heat_setpoint="72")
+    msg = _get_sent_message(connection)
+    req = msg["Request"]["UpdateTemperatureSetpoint"]
+    assert req["heat_setpoint"] == "72"
+    assert req["cool_setpoint"] == "75"  # default, deadband already satisfied
+
+
 def test_set_fan_mode(connection: ThermostatConnection) -> None:
     connection.set_fan_mode(FanMode.CIRCULATE)
     msg = _get_sent_message(connection)

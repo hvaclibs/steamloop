@@ -725,10 +725,13 @@ class ThermostatConnection:
         db = float(zone.deadband) if zone and zone.deadband else 3.0
         heat_requested = heat_setpoint is not None
         cool_requested = cool_setpoint is not None
-        if heat_setpoint is None:
-            heat_setpoint = zone.heat_setpoint if zone else "55"
-        if cool_setpoint is None:
-            cool_setpoint = zone.cool_setpoint if zone else "75"
+        # Fall back to defaults when the value is missing OR empty — a zone
+        # can exist before its initial setpoint burst arrives, leaving the
+        # stored setpoints as "" which float() cannot parse.
+        if not heat_setpoint:
+            heat_setpoint = zone.heat_setpoint if zone and zone.heat_setpoint else "55"
+        if not cool_setpoint:
+            cool_setpoint = zone.cool_setpoint if zone and zone.cool_setpoint else "75"
         heat_f = float(heat_setpoint)
         cool_f = float(cool_setpoint)
         if cool_f - heat_f < db:
