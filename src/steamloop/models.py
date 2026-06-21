@@ -23,6 +23,7 @@ def _parse_activity(value: str) -> HVACActivity | None:
     except (ValueError, TypeError):
         return None
 
+
 # ---------------------------------------------------------------------------
 # Event TypedDicts — match the wire format exactly (all string values)
 # ---------------------------------------------------------------------------
