@@ -630,7 +630,14 @@ class ThermostatConnection:
         while self._connected:
             await asyncio.sleep(HEARTBEAT_INTERVAL)
             if self._connected and self._protocol is not None:
-                self._protocol.send({"Heartbeat": {}})
+                # A send can race with a connection drop (transport closed
+                # between the guard and the write). That just means the
+                # connection is gone — let _run_loop handle reconnection
+                # rather than letting the exception kill the run loop.
+                try:
+                    self._protocol.send({"Heartbeat": {}})
+                except SteamloopConnectionError:
+                    return
 
     async def _run_loop(self) -> None:
         """
@@ -648,7 +655,11 @@ class ThermostatConnection:
                 finally:
                     self._connected = False
                     heartbeat.cancel()
-                    with contextlib.suppress(asyncio.CancelledError):
+                    # Suppress *any* heartbeat-task exception here: a stray
+                    # error from a heartbeat must never escape and kill the
+                    # reconnect loop (which would leave the connection dead
+                    # forever).
+                    with contextlib.suppress(asyncio.CancelledError, Exception):
                         await heartbeat
                     self._close_transport()
 
