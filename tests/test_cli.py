@@ -101,6 +101,31 @@ def test_command_setpoint(capsys: pytest.CaptureFixture[str]) -> None:
     )
 
 
+def test_command_heat_invalid_temp(capsys: pytest.CaptureFixture[str]) -> None:
+    """A non-numeric heat temp is rejected without calling the connection."""
+    conn = _make_mock_conn()
+    result = _handle_command(conn, "heat abc", ["heat", "abc"], "1")
+    assert result == "1"
+    conn.set_temperature_setpoint.assert_not_called()
+    assert "Invalid temperature" in capsys.readouterr().out
+
+
+def test_command_cool_invalid_temp(capsys: pytest.CaptureFixture[str]) -> None:
+    """A non-numeric cool temp is rejected without calling the connection."""
+    conn = _make_mock_conn()
+    _handle_command(conn, "cool hot", ["cool", "hot"], "1")
+    conn.set_temperature_setpoint.assert_not_called()
+    assert "Invalid temperature" in capsys.readouterr().out
+
+
+def test_command_setpoint_invalid_temp(capsys: pytest.CaptureFixture[str]) -> None:
+    """A bad value in setpoint rejects the whole command, no call is made."""
+    conn = _make_mock_conn()
+    _handle_command(conn, "setpoint 68 cold", ["setpoint", "68", "cold"], "1")
+    conn.set_temperature_setpoint.assert_not_called()
+    assert "Invalid temperature" in capsys.readouterr().out
+
+
 def test_command_hold() -> None:
     conn = _make_mock_conn()
     _handle_command(conn, "hold manual", ["hold", "manual"], "1")
