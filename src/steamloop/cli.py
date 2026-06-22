@@ -86,14 +86,28 @@ def _print_help(active_zone: str) -> None:
     print("  quit                        Disconnect and exit")
 
 
+def _valid_temp(temp: str) -> bool:
+    """Return True if temp parses as a number; print an error otherwise."""
+    try:
+        float(temp)
+    except ValueError:
+        print(f"Invalid temperature: {temp!r}. Expected a number.")
+        return False
+    return True
+
+
 def _cmd_heat(conn: ThermostatConnection, active_zone: str, temp: str) -> None:
     """Handle the heat command."""
+    if not _valid_temp(temp):
+        return
     print(f"Setting heat setpoint to {temp} (zone {active_zone})")
     conn.set_temperature_setpoint(active_zone, heat_setpoint=temp)
 
 
 def _cmd_cool(conn: ThermostatConnection, active_zone: str, temp: str) -> None:
     """Handle the cool command."""
+    if not _valid_temp(temp):
+        return
     print(f"Setting cool setpoint to {temp} (zone {active_zone})")
     conn.set_temperature_setpoint(active_zone, cool_setpoint=temp)
 
@@ -131,10 +145,11 @@ def _handle_command(
         _cmd_cool(conn, active_zone, parts[1])
 
     elif parts[0] == "setpoint" and len(parts) >= 3:
-        print(f"Setting heat={parts[1]}, cool={parts[2]} (zone {active_zone})")
-        conn.set_temperature_setpoint(
-            active_zone, heat_setpoint=parts[1], cool_setpoint=parts[2]
-        )
+        if _valid_temp(parts[1]) and _valid_temp(parts[2]):
+            print(f"Setting heat={parts[1]}, cool={parts[2]} (zone {active_zone})")
+            conn.set_temperature_setpoint(
+                active_zone, heat_setpoint=parts[1], cool_setpoint=parts[2]
+            )
 
     elif parts[0] == "hold" and len(parts) >= 2:
         ht = _HOLD_MAP.get(parts[1])
