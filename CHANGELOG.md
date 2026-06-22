@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.2 (2026-06-22)
+
+### Bug fixes
+
+- Validate numeric temp input in cli to prevent repl crash ([`73dae9c`](https://github.com/hvaclibs/steamloop/commit/73dae9c8fabeec452f6ef3a788e4761c5faa0612))
+
 ## v1.2.1 (2026-02-19)
 
 ### Bug fixes
