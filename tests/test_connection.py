@@ -803,9 +803,59 @@ async def test_heartbeat_loop_sends_heartbeat(
     assert transport.write.call_count >= 1
 
 
+async def test_heartbeat_loop_swallows_connection_error(
+    connection: ThermostatConnection,
+) -> None:
+    assert connection._protocol is not None
+    # Drop the transport so a heartbeat send raises SteamloopConnectionError,
+    # simulating a send racing with a connection drop.
+    connection._protocol._transport = None
+    with patch("steamloop.connection.HEARTBEAT_INTERVAL", 0.01):
+        # Must return cleanly instead of propagating the error.
+        await asyncio.wait_for(connection._heartbeat_loop(), timeout=1.0)
+
+
 # ---------------------------------------------------------------------------
 # Run loop — reconnect with backoff
 # ---------------------------------------------------------------------------
+
+
+async def test_run_loop_survives_heartbeat_exception() -> None:
+    """A heartbeat error must not kill the reconnect loop."""
+    conn = ThermostatConnection("10.0.0.1", secret_key="sk")
+    conn._connected = True
+
+    connect_count = 0
+
+    async def mock_connect() -> None:
+        nonlocal connect_count
+        connect_count += 1
+        conn._connected = True
+        conn._connection_lost_event.clear()
+
+    async def mock_login() -> dict[str, str]:
+        return {"status": "1"}
+
+    async def boom() -> None:
+        raise SteamloopConnectionError("heartbeat send failed")
+
+    with (
+        patch.object(conn, "connect", side_effect=mock_connect),
+        patch.object(conn, "login", side_effect=mock_login),
+        patch.object(conn, "_heartbeat_loop", new=boom),
+        patch("steamloop.connection.RECONNECT_DELAY", 0.01),
+    ):
+        conn._connection_lost_event.clear()
+        task = asyncio.create_task(conn._run_loop())
+        await asyncio.sleep(0.01)
+        conn._connection_lost_event.set()
+        await asyncio.sleep(0.1)
+        # The loop must still be alive and have reconnected.
+        assert not task.done()
+        assert connect_count >= 1
+        task.cancel()
+        with __import__("contextlib").suppress(asyncio.CancelledError):
+            await task
 
 
 async def test_run_loop_reconnects_on_connection_lost() -> None:
