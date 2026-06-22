@@ -11,7 +11,7 @@ from .exceptions import (
     SteamloopConnectionError,
     SteamloopError,
 )
-from .models import ThermostatState, Zone
+from .models import Preset, ThermostatState, Zone
 
 __all__ = [
     "DEFAULT_PORT",
@@ -20,6 +20,7 @@ __all__ = [
     "FanMode",
     "HoldType",
     "PairingError",
+    "Preset",
     "SteamloopConnectionError",
     "SteamloopError",
     "ThermostatConnection",

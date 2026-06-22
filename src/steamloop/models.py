@@ -136,6 +136,30 @@ class Zone:
     hold_type: HoldType = HoldType.UNDEFINED
 
 
+@dataclass(frozen=True)
+class Preset:
+    """
+    A named bundle of zone settings applied together.
+
+    The local thermostat protocol has no native preset concept (unlike the
+    Nexia/Trane cloud API). A ``Preset`` is a client-side convenience:
+    applying it issues the same verified zone commands you would send by
+    hand — mode, setpoints, hold, and fan — as a single named unit, which is
+    enough to back a Home Assistant ``preset_modes`` list.
+
+    Fields left as ``None`` are not sent, so a preset can target only the
+    settings it cares about (e.g. an "Away" preset that only raises setpoints
+    without touching the HVAC mode).
+    """
+
+    name: str
+    zone_mode: ZoneMode | None = None
+    heat_setpoint: str | None = None
+    cool_setpoint: str | None = None
+    fan_mode: FanMode | None = None
+    hold_type: HoldType = HoldType.MANUAL
+
+
 @dataclass
 class ThermostatState:
     """Aggregated state of the thermostat and all zones."""
