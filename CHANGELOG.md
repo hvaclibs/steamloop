@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.3 (2026-06-22)
+
+### Bug fixes
+
+- Avoid valueerror on empty setpoints for known zones ([`dbe2709`](https://github.com/hvaclibs/steamloop/commit/dbe270992f3d5d3290f6c14fb47e46077e06fb47))
+
 ## v1.2.2 (2026-06-22)
 
 ### Bug fixes
