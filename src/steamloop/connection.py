@@ -21,6 +21,8 @@ from .certs import CERT_SETS, CertSet, create_ssl_context
 from .const import (
     BACKOFF_FACTOR,
     CONNECT_TIMEOUT,
+    DEFAULT_COOL_SETPOINT,
+    DEFAULT_HEAT_SETPOINT,
     DEFAULT_PORT,
     HEARTBEAT_INTERVAL,
     INITIAL_STATE_TIMEOUT,
@@ -729,9 +731,13 @@ class ThermostatConnection:
         # can exist before its initial setpoint burst arrives, leaving the
         # stored setpoints as "" which float() cannot parse.
         if not heat_setpoint:
-            heat_setpoint = zone.heat_setpoint if zone and zone.heat_setpoint else "55"
+            heat_setpoint = (
+                zone.heat_setpoint if zone and zone.heat_setpoint else DEFAULT_HEAT_SETPOINT
+            )
         if not cool_setpoint:
-            cool_setpoint = zone.cool_setpoint if zone and zone.cool_setpoint else "75"
+            cool_setpoint = (
+                zone.cool_setpoint if zone and zone.cool_setpoint else DEFAULT_COOL_SETPOINT
+            )
         heat_f = float(heat_setpoint)
         cool_f = float(cool_setpoint)
         if cool_f - heat_f < db:

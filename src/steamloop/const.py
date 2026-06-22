@@ -47,3 +47,5 @@ INITIAL_STATE_TIMEOUT = 1  # seconds to wait for initial state after login
 RECONNECT_DELAY = 5  # initial delay before first reconnect attempt
 RECONNECT_MAX = 300  # max delay between reconnect attempts (5 minutes)
 BACKOFF_FACTOR = 2  # multiply delay by this on each failure
+DEFAULT_HEAT_SETPOINT = "55"  # str for wire format
+DEFAULT_COOL_SETPOINT = "75"  # str for wire format
