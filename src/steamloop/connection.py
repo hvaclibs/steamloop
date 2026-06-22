@@ -732,11 +732,15 @@ class ThermostatConnection:
         # stored setpoints as "" which float() cannot parse.
         if not heat_setpoint:
             heat_setpoint = (
-                zone.heat_setpoint if zone and zone.heat_setpoint else DEFAULT_HEAT_SETPOINT
+                zone.heat_setpoint
+                if zone and zone.heat_setpoint
+                else DEFAULT_HEAT_SETPOINT
             )
         if not cool_setpoint:
             cool_setpoint = (
-                zone.cool_setpoint if zone and zone.cool_setpoint else DEFAULT_COOL_SETPOINT
+                zone.cool_setpoint
+                if zone and zone.cool_setpoint
+                else DEFAULT_COOL_SETPOINT
             )
         heat_f = float(heat_setpoint)
         cool_f = float(cool_setpoint)
