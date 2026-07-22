@@ -22,6 +22,20 @@ class FanMode(IntEnum):
     CIRCULATE = 3
 
 
+class HVACActivity(IntEnum):
+    """
+    Live HVAC activity for heating/cooling, as reported by the thermostat.
+
+    INACTIVE: System is off — not heating/cooling.
+    IDLE: System is on but not currently running (setpoint satisfied).
+    ACTIVE: System is actively heating/cooling right now.
+    """
+
+    INACTIVE = 0
+    IDLE = 1
+    ACTIVE = 2
+
+
 class HoldType(IntEnum):
     """
     Temperature hold type.

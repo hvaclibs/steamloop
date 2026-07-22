@@ -5,7 +5,24 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TypedDict
 
-from .const import FanMode, HoldType, ZoneMode
+from .const import FanMode, HoldType, HVACActivity, ZoneMode
+
+
+def _parse_float(value: str) -> float | None:
+    """Parse a wire string into a float, or None if empty/invalid."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_activity(value: str) -> HVACActivity | None:
+    """Parse a raw activity string ("0"/"1"/"2") into HVACActivity, or None."""
+    try:
+        return HVACActivity(int(value))
+    except (ValueError, TypeError):
+        return None
+
 
 # ---------------------------------------------------------------------------
 # Event TypedDicts — match the wire format exactly (all string values)
@@ -135,6 +152,26 @@ class Zone:
     deadband: str = ""
     hold_type: HoldType = HoldType.UNDEFINED
 
+    @property
+    def indoor_temperature_f(self) -> float | None:
+        """Indoor temperature in °F, or None if unknown."""
+        return _parse_float(self.indoor_temperature)
+
+    @property
+    def heat_setpoint_f(self) -> float | None:
+        """Heat setpoint in °F, or None if unknown."""
+        return _parse_float(self.heat_setpoint)
+
+    @property
+    def cool_setpoint_f(self) -> float | None:
+        """Cool setpoint in °F, or None if unknown."""
+        return _parse_float(self.cool_setpoint)
+
+    @property
+    def deadband_f(self) -> float | None:
+        """Minimum gap between heat and cool setpoints, or None if unknown."""
+        return _parse_float(self.deadband)
+
 
 @dataclass
 class ThermostatState:
@@ -147,3 +184,28 @@ class ThermostatState:
     relative_humidity: str = ""
     cooling_active: str = ""
     heating_active: str = ""
+
+    @property
+    def emergency_heat_on(self) -> bool | None:
+        """Whether emergency heat is on, or None if unknown."""
+        if self.emergency_heat == "1":
+            return True
+        if self.emergency_heat == "0":
+            return False
+        return None
+
+    @property
+    def cooling(self) -> HVACActivity | None:
+        """Live cooling activity, or None if unknown."""
+        return _parse_activity(self.cooling_active)
+
+    @property
+    def heating(self) -> HVACActivity | None:
+        """Live heating activity, or None if unknown."""
+        return _parse_activity(self.heating_active)
+
+    @property
+    def relative_humidity_pct(self) -> int | None:
+        """Indoor relative humidity as a percentage, or None if unknown."""
+        parsed = _parse_float(self.relative_humidity)
+        return int(parsed) if parsed is not None else None

@@ -124,6 +124,33 @@ pairing = await load_pairing(ip)
 conn = ThermostatConnection(ip, secret_key=pairing["secret_key"])
 ```
 
+### Typed State Accessors
+
+Raw event fields are wire strings (e.g. `zone.indoor_temperature == "74"`). For
+consumers that want native Python types, every string field has a typed companion
+that parses the value and returns `None` when it's missing or invalid — no
+defensive parsing required on your side:
+
+```python
+from steamloop import HVACActivity
+
+zone.indoor_temperature_f   # 74.0  (float | None)
+zone.heat_setpoint_f        # 68.5  (float | None)
+zone.cool_setpoint_f        # 76.0  (float | None)
+zone.deadband_f             # 3.0   (float | None)
+
+state.emergency_heat_on     # True / False / None
+state.relative_humidity_pct # 45    (int | None)
+
+# Live activity is tri-state, not a bool:
+state.cooling               # HVACActivity.ACTIVE  (INACTIVE / IDLE / ACTIVE | None)
+state.heating               # HVACActivity.IDLE
+```
+
+`HVACActivity.IDLE` means the system is on but not currently running (setpoint
+satisfied) — distinct from `INACTIVE` (off). This maps cleanly onto Home
+Assistant's `hvac_action`.
+
 ### Event Callbacks
 
 ```python
