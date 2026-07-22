@@ -94,6 +94,91 @@ def test_callback_exception_logged_not_raised(
 
 
 # ---------------------------------------------------------------------------
+# Connection-state callbacks
+# ---------------------------------------------------------------------------
+
+
+def test_available_false_before_login(
+    disconnected_connection: ThermostatConnection,
+) -> None:
+    assert disconnected_connection.available is False
+
+
+def test_connection_callback_fires_on_loss(
+    connection: ThermostatConnection,
+) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    connection._available = True  # simulate a prior successful login
+    connection._on_connection_lost(ConnectionResetError("reset"))
+    assert states == [False]
+    assert connection.available is False
+
+
+def test_connection_callback_dedupes(connection: ThermostatConnection) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    connection._notify_connection_state(True)
+    connection._notify_connection_state(True)
+    connection._notify_connection_state(False)
+    connection._notify_connection_state(False)
+    assert states == [True, False]
+
+
+def test_remove_connection_callback(connection: ThermostatConnection) -> None:
+    states: list[bool] = []
+    remove = connection.add_connection_callback(states.append)
+    remove()
+    connection._notify_connection_state(True)
+    assert states == []
+
+
+def test_remove_connection_callback_idempotent(
+    connection: ThermostatConnection,
+) -> None:
+    remove = connection.add_connection_callback(lambda available: None)
+    remove()
+    remove()  # Should not raise
+
+
+def test_connection_callback_exception_logged_not_raised(
+    connection: ThermostatConnection,
+) -> None:
+    def bad_callback(available: bool) -> None:
+        raise RuntimeError("boom")
+
+    connection.add_connection_callback(bad_callback)
+    # Should not raise
+    connection._notify_connection_state(True)
+    assert connection.available is True
+
+
+async def test_login_marks_available_and_notifies(
+    connection: ThermostatConnection,
+) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    resp = {"Response": {"LoginResponse": {"status": "1"}}}
+    task = asyncio.create_task(_feed_response(connection, resp))
+    with patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.05):
+        await connection.login()
+    await task
+    assert connection.available is True
+    assert states == [True]
+
+
+async def test_disconnect_notifies_unavailable(
+    connection: ThermostatConnection,
+) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    connection._available = True  # simulate a prior successful login
+    await connection.disconnect()
+    assert connection.available is False
+    assert states == [False]
+
+
+# ---------------------------------------------------------------------------
 # Event dispatch — all 11 handlers
 # ---------------------------------------------------------------------------
 
