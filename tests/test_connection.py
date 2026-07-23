@@ -1009,3 +1009,62 @@ def test_deadband_exact_gap_no_adjustment(
     req = msg["Request"]["UpdateTemperatureSetpoint"]
     assert req["heat_setpoint"] == "70"
     assert req["cool_setpoint"] == "73"  # 73 - 70 = 3, exactly meets deadband
+
+
+# ---------------------------------------------------------------------------
+# Protocol edge cases (branch coverage)
+# ---------------------------------------------------------------------------
+
+
+def test_event_supported_zone_modes_empty_token_skipped(
+    connection: ThermostatConnection,
+) -> None:
+    """Empty tokens (e.g. a trailing/double comma) are skipped, not parsed."""
+    connection._dispatch(make_event("SupportedZoneModesUpdated", {"modes": "0,,2"}))
+    assert connection.state.supported_modes == [ZoneMode.OFF, ZoneMode.COOL]
+
+
+async def test_login_ignores_unknown_response(
+    connection: ThermostatConnection,
+) -> None:
+    """A Response without LoginResponse/Error is ignored; login keeps waiting."""
+
+    async def _feed() -> None:
+        await asyncio.sleep(0.01)
+        connection._on_message({"Response": {"Unknown": {}}})
+        await asyncio.sleep(0.01)
+        connection._on_message({"Response": {"LoginResponse": {"status": "1"}}})
+
+    task = asyncio.create_task(_feed())
+    with patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.05):
+        result = await connection.login()
+    assert result["status"] == "1"
+    await task
+
+
+async def test_pair_ignores_unrelated_messages(
+    connection: ThermostatConnection,
+) -> None:
+    """Non-Request, non-Response, and unknown-Response messages are skipped."""
+
+    async def _feed() -> None:
+        await asyncio.sleep(0.01)
+        connection._on_message({"Heartbeat": {}})  # no Request/Response key
+        await asyncio.sleep(0.01)
+        connection._on_message({"Response": {"Unknown": {}}})  # Response, no match
+        await asyncio.sleep(0.01)
+        connection._on_message({"Request": {"SetSecretKey": {"secret_key": "k-42"}}})
+
+    task = asyncio.create_task(_feed())
+    result = await connection.pair()
+    assert result["secret_key"] == "k-42"
+    await task
+
+
+async def test_disconnect_without_run_task(
+    connection: ThermostatConnection,
+) -> None:
+    """disconnect() is safe when no background run task was ever started."""
+    assert connection._run_task is None
+    await connection.disconnect()
+    assert connection._connected is False
