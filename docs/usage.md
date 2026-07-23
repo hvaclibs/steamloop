@@ -18,18 +18,18 @@ steamloop --help
 usage: steamloop [-h] [--port PORT] [--pair] [--key KEY] [--debug] ip
 ```
 
-| Argument   | Description                                              |
-| ---------- | ------------------------------------------------------- |
-| `ip`       | Thermostat IP address (required).                       |
-| `--port`   | TCP port to connect to (default: `7878`).               |
-| `--pair`   | Enter pairing mode to obtain a secret key.              |
-| `--key`    | Secret key from a previous pairing (skips the file).    |
-| `--debug`  | Enable debug logging.                                   |
+| Argument  | Description                                          |
+| --------- | ---------------------------------------------------- |
+| `ip`      | Thermostat IP address (required).                    |
+| `--port`  | TCP port to connect to (default: `7878`).            |
+| `--pair`  | Enter pairing mode to obtain a secret key.           |
+| `--key`   | Secret key from a previous pairing (skips the file). |
+| `--debug` | Enable debug logging.                                |
 
 ### Pairing
 
-Put the thermostat in pairing mode (on the device: *Menu > Settings > Network >
-Advanced Setup > Remote Connection > Pair*), then run:
+Put the thermostat in pairing mode (on the device: _Menu > Settings > Network >
+Advanced Setup > Remote Connection > Pair_), then run:
 
 ```bash
 steamloop 192.168.1.100 --pair
@@ -58,20 +58,20 @@ steamloop 192.168.1.100 --key YOUR_SECRET_KEY
 Once connected, the CLI streams thermostat events and accepts commands on
 stdin. Type `help` at any time to list them:
 
-| Command                       | Description                              |
-| ----------------------------- | ---------------------------------------- |
-| `status`                      | Show the current thermostat state.       |
-| `zone <id>`                   | Select the active zone for zone commands.|
-| `heat <temp>`                 | Set the heat setpoint.                   |
-| `cool <temp>`                 | Set the cool setpoint.                   |
-| `setpoint <heat> <cool>`      | Set both setpoints at once.              |
-| `hold <manual\|schedule\|hold>` | Set the hold type.                     |
-| `mode <off\|auto\|cool\|heat>`  | Set the zone HVAC mode.                |
-| `fan <auto\|on\|circulate>`     | Set the fan mode.                      |
-| `eheat <on\|off>`               | Toggle emergency heat.                 |
-| `raw <json>`                  | Send a raw JSON message.                 |
-| `ping`                        | Send a heartbeat.                        |
-| `quit`                        | Disconnect and exit.                     |
+| Command                         | Description                               |
+| ------------------------------- | ----------------------------------------- |
+| `status`                        | Show the current thermostat state.        |
+| `zone <id>`                     | Select the active zone for zone commands. |
+| `heat <temp>`                   | Set the heat setpoint.                    |
+| `cool <temp>`                   | Set the cool setpoint.                    |
+| `setpoint <heat> <cool>`        | Set both setpoints at once.               |
+| `hold <manual\|schedule\|hold>` | Set the hold type.                        |
+| `mode <off\|auto\|cool\|heat>`  | Set the zone HVAC mode.                   |
+| `fan <auto\|on\|circulate>`     | Set the fan mode.                         |
+| `eheat <on\|off>`               | Toggle emergency heat.                    |
+| `raw <json>`                    | Send a raw JSON message.                  |
+| `ping`                          | Send a heartbeat.                         |
+| `quit`                          | Disconnect and exit.                      |
 
 ## Library
 
