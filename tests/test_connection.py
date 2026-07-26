@@ -94,6 +94,160 @@ def test_callback_exception_logged_not_raised(
 
 
 # ---------------------------------------------------------------------------
+# Connection-state callbacks
+# ---------------------------------------------------------------------------
+
+
+def test_available_false_before_login(
+    disconnected_connection: ThermostatConnection,
+) -> None:
+    assert disconnected_connection.available is False
+
+
+def test_connection_callback_fires_on_loss(
+    connection: ThermostatConnection,
+) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    connection._available = True  # simulate a prior successful login
+    connection._on_connection_lost(ConnectionResetError("reset"))
+    assert states == [False]
+    assert connection.available is False
+
+
+def test_connection_callback_dedupes(connection: ThermostatConnection) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    connection._notify_connection_state(True)
+    connection._notify_connection_state(True)
+    connection._notify_connection_state(False)
+    connection._notify_connection_state(False)
+    assert states == [True, False]
+
+
+def test_remove_connection_callback(connection: ThermostatConnection) -> None:
+    states: list[bool] = []
+    remove = connection.add_connection_callback(states.append)
+    remove()
+    connection._notify_connection_state(True)
+    assert states == []
+
+
+def test_remove_connection_callback_idempotent(
+    connection: ThermostatConnection,
+) -> None:
+    remove = connection.add_connection_callback(lambda available: None)
+    remove()
+    remove()  # Should not raise
+
+
+def test_connection_callback_exception_logged_not_raised(
+    connection: ThermostatConnection,
+) -> None:
+    def bad_callback(available: bool) -> None:
+        raise RuntimeError("boom")
+
+    connection.add_connection_callback(bad_callback)
+    # Should not raise
+    connection._notify_connection_state(True)
+    assert connection.available is True
+
+
+async def test_login_marks_available_and_notifies(
+    connection: ThermostatConnection,
+) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    resp = {"Response": {"LoginResponse": {"status": "1"}}}
+    task = asyncio.create_task(_feed_response(connection, resp))
+    with patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.05):
+        await connection.login()
+    await task
+    assert connection.available is True
+    assert states == [True]
+
+
+async def test_disconnect_notifies_unavailable(
+    connection: ThermostatConnection,
+) -> None:
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    connection._available = True  # simulate a prior successful login
+    await connection.disconnect()
+    assert connection.available is False
+    assert states == [False]
+
+
+def test_close_transport_marks_unavailable(
+    connection: ThermostatConnection,
+) -> None:
+    """Tearing down the transport must clear availability.
+
+    The reconnect loop closes the transport directly (without going through
+    ``_on_connection_lost``); availability must not stay latched True while
+    the connection is gone.
+    """
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    connection._available = True  # simulate a prior successful login
+    connection._close_transport()
+    assert connection.available is False
+    assert states == [False]
+
+
+async def test_login_after_lost_connection_does_not_latch_available(
+    connection: ThermostatConnection,
+) -> None:
+    """A drop racing a successful login must not leave ``available`` True."""
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    # The transport dies while still unavailable, so this notification is a
+    # no-op — then the in-flight login succeeds and latches available True.
+    connection._on_connection_lost(ConnectionResetError("reset"))
+    resp = {"Response": {"LoginResponse": {"status": "1"}}}
+    task = asyncio.create_task(_feed_response(connection, resp))
+    with patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.05):
+        await connection.login()
+    await task
+    # The run loop then tears the dead transport down; availability must follow.
+    connection._close_transport()
+    assert connection.available is False
+    assert states == [True, False]
+
+
+def test_stale_connection_lost_ignored(
+    connection: ThermostatConnection,
+) -> None:
+    """A superseded transport must not clobber the live connection's state.
+
+    ``transport.close()`` on a TLS transport is asynchronous — ``connection_lost``
+    can fire seconds later, after the reconnect loop already established a new
+    connection. That late callback must be ignored, otherwise it marks a healthy
+    connection unavailable and re-triggers the reconnect loop.
+    """
+    stale = connection._protocol
+    assert stale is not None
+    connection._close_transport()  # supersedes `stale`
+
+    # Reconnect: new protocol, fresh state.
+    fresh = ThermostatProtocol(connection)
+    fresh.connection_made(cast("asyncio.Transport", MagicMock(spec=asyncio.Transport)))
+    connection._protocol = fresh
+    connection._connected = True
+    connection._notify_connection_state(True)
+    connection._connection_lost_event.clear()
+
+    states: list[bool] = []
+    connection.add_connection_callback(states.append)
+    stale.connection_lost(ConnectionResetError("late close_notify"))
+
+    assert connection.connected is True
+    assert connection.available is True
+    assert connection._connection_lost_event.is_set() is False
+    assert states == []
+
+
+# ---------------------------------------------------------------------------
 # Event dispatch — all 11 handlers
 # ---------------------------------------------------------------------------
 

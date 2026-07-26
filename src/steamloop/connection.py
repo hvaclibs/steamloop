@@ -156,6 +156,13 @@ class ThermostatProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc: Exception | None) -> None:
         """Called when the connection is lost."""
+        # A TLS transport.close() completes asynchronously, so this can fire
+        # long after close() detached us and the reconnect loop built a new
+        # connection. Reporting it then would mark a healthy connection
+        # unavailable and restart the reconnect loop.
+        if self._transport is None:
+            return
+        self._transport = None
         self._connection._on_connection_lost(exc)  # noqa: SLF001
 
     def send(self, msg: dict[str, Any]) -> None:
@@ -242,12 +249,26 @@ class ThermostatConnection:
         self._message_queue: asyncio.Queue[dict[str, Any]] | None = None
         self.state = ThermostatState()
         self._event_callbacks: list[Callable[[dict[str, Any]], None]] = []
+        self._connection_callbacks: list[Callable[[bool], None]] = []
         self._connected = False
+        self._available = False
 
     @property
     def connected(self) -> bool:
         """Return True if the connection is active."""
         return self._connected
+
+    @property
+    def available(self) -> bool:
+        """
+        Return True if the thermostat is connected *and* authenticated.
+
+        Unlike ``connected`` (transport-level), this reflects whether the
+        thermostat is usable: it becomes True once ``login()`` succeeds and
+        False as soon as the connection drops. Connection callbacks are
+        fired on every transition.
+        """
+        return self._available
 
     @property
     def secret_key(self) -> str:
@@ -265,6 +286,36 @@ class ThermostatConnection:
                 self._event_callbacks.remove(callback)
 
         return _remove
+
+    def add_connection_callback(
+        self, callback: Callable[[bool], None]
+    ) -> Callable[[], None]:
+        """
+        Register a connection-state callback. Returns a callable to unregister.
+
+        The callback is invoked with ``True`` when the thermostat becomes
+        available (login succeeds, including after an automatic reconnect)
+        and ``False`` when the connection is lost. It is only called on
+        transitions, never twice in a row with the same value.
+        """
+        self._connection_callbacks.append(callback)
+
+        def _remove() -> None:
+            with contextlib.suppress(ValueError):
+                self._connection_callbacks.remove(callback)
+
+        return _remove
+
+    def _notify_connection_state(self, available: bool) -> None:
+        """Update availability and notify callbacks on a transition."""
+        if self._available == available:
+            return
+        self._available = available
+        for cb in self._connection_callbacks:
+            try:
+                cb(available)
+            except Exception:
+                _LOGGER.exception("Error in connection callback")
 
     # --- Connection lifecycle ---
 
@@ -344,6 +395,11 @@ class ThermostatConnection:
     def _close_transport(self) -> None:
         """Close the underlying transport."""
         self._connected = False
+        # Authoritative unavailability point: the reconnect loop tears the
+        # transport down directly, and a login can win a race against an
+        # already-fired _on_connection_lost. Without this, availability
+        # latches True while the connection is gone.
+        self._notify_connection_state(False)
         if self._protocol is not None:
             self._protocol.close()
             self._protocol = None
@@ -380,6 +436,7 @@ class ThermostatConnection:
     def _on_connection_lost(self, exc: Exception | None) -> None:
         """Called by the protocol when the connection drops."""
         self._connected = False
+        self._notify_connection_state(False)
         if exc:
             _LOGGER.warning("Connection lost: %s", exc)
         else:
@@ -545,6 +602,7 @@ class ThermostatConnection:
                     await asyncio.wait_for(queue.get(), timeout=INITIAL_STATE_TIMEOUT)
                 except TimeoutError:
                     break
+            self._notify_connection_state(True)
             return login_resp
         finally:
             self._message_queue = None
