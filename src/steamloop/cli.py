@@ -282,10 +282,15 @@ async def _do_monitor(ip: str, port: int, secret_key: str | None = None) -> None
             while conn.connected:
                 try:
                     line = await loop.run_in_executor(None, sys.stdin.readline)
-                    cmd = line.strip()
                 except EOFError:
                     break
 
+                # readline() returns "" at EOF (Ctrl+D / closed stdin) rather
+                # than raising; a bare "\n" (blank line) is not EOF.
+                if not line:
+                    break
+
+                cmd = line.strip()
                 if not cmd:
                     continue
 

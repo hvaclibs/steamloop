@@ -440,6 +440,56 @@ async def test_do_monitor_eof(
     assert "Disconnected" in captured.out
 
 
+async def test_do_monitor_eof_empty_string_breaks(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Real EOF makes readline() return "" (not raise); the loop must break.
+
+    Before the fix, an empty string fell through to ``if not cmd: continue``
+    and the loop spun forever because ``conn.connected`` stayed True — a
+    busy-loop CPU hog on Ctrl+D or a closed/piped stdin. This test proves the
+    loop terminates on the first empty readline by failing if readline is
+    called a second time.
+    """
+    mock_conn = MagicMock()
+    mock_conn.connected = True
+    mock_conn.state = ThermostatState()
+    mock_conn.add_event_callback = MagicMock(return_value=lambda: None)
+
+    async def _mock_aenter(self: Any) -> MagicMock:
+        return mock_conn
+
+    mock_conn.__aenter__ = _mock_aenter
+    mock_conn.__aexit__ = AsyncMock(return_value=False)
+
+    calls = 0
+
+    def _readline() -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return ""  # EOF
+        raise AssertionError("readline called after EOF — loop did not break")
+
+    with (
+        patch(
+            "steamloop.cli.load_pairing",
+            new_callable=AsyncMock,
+            return_value={"secret_key": "sk"},
+        ),
+        patch(
+            "steamloop.cli.ThermostatConnection",
+            return_value=mock_conn,
+        ),
+        patch("steamloop.cli.sys.stdin") as mock_stdin,
+    ):
+        mock_stdin.readline.side_effect = _readline
+        await _do_monitor("192.168.1.100", 7878)
+
+    assert calls == 1
+    assert "Disconnected" in capsys.readouterr().out
+
+
 async def test_do_monitor_connection_error_during_command(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
