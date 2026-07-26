@@ -26,6 +26,7 @@ from .const import (
     DEFAULT_PORT,
     HEARTBEAT_INTERVAL,
     INITIAL_STATE_TIMEOUT,
+    MAX_FRAME_BYTES,
     PAIRING_TIMEOUT,
     RECONNECT_DELAY,
     RECONNECT_MAX,
@@ -153,6 +154,18 @@ class ThermostatProtocol(asyncio.Protocol):
         """Called when data is received from the thermostat."""
         self._buf.extend(data)
         self._process_buffer()
+        if len(self._buf) > MAX_FRAME_BYTES:
+            # No delimiter within MAX_FRAME_BYTES: the stream is desynced or
+            # the peer is flooding. Keeping the partial frame would grow the
+            # buffer without bound, so drop it and close the transport — the
+            # reconnect loop resynchronises on a fresh connection. The
+            # delegate stays attached so connection_lost() reports the drop.
+            _LOGGER.error(
+                "Discarding %d buffered bytes with no frame delimiter", len(self._buf)
+            )
+            self._buf.clear()
+            if self._transport is not None:
+                self._transport.close()
 
     def connection_lost(self, exc: Exception | None) -> None:
         """Called when the connection is lost."""

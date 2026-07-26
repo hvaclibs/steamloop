@@ -790,6 +790,42 @@ def test_close_transport_when_already_none() -> None:
     conn._close_transport()  # Should not raise
 
 
+def test_protocol_drops_oversized_partial_frame() -> None:
+    """An undelimited stream is discarded and the transport closed."""
+    conn = ThermostatConnection("10.0.0.1", secret_key="sk")
+    protocol = ThermostatProtocol(conn)
+    transport = MagicMock()
+    protocol.connection_made(transport)
+    with patch("steamloop.connection.MAX_FRAME_BYTES", 64):
+        protocol.data_received(b"x" * 65)
+    assert protocol._buf == b""
+    transport.close.assert_called_once()
+    # Delegate stays attached so a later connection_lost() reaches the owner.
+    assert protocol._transport is transport
+    # Safe once already detached — the buffer is still bounded.
+    protocol._transport = None
+    with patch("steamloop.connection.MAX_FRAME_BYTES", 64):
+        protocol.data_received(b"x" * 65)
+    assert protocol._buf == b""
+
+
+def test_protocol_keeps_partial_frame_under_limit() -> None:
+    """A fragmented frame still assembles across data_received() calls."""
+    conn = ThermostatConnection("10.0.0.1", secret_key="sk")
+    protocol = ThermostatProtocol(conn)
+    transport = MagicMock()
+    protocol.connection_made(transport)
+    received: list[dict[str, Any]] = []
+    conn.add_event_callback(received.append)
+    with patch("steamloop.connection.MAX_FRAME_BYTES", 64):
+        protocol.data_received(b'{"Heartbeat"')
+        assert protocol._buf  # held, not dropped
+        transport.close.assert_not_called()
+        protocol.data_received(b": {}} \x00")
+    assert received == [{"Heartbeat": {}}]
+    assert protocol._buf == b""
+
+
 def test_protocol_close_when_transport_none() -> None:
     conn = ThermostatConnection("10.0.0.1", secret_key="sk")
     protocol = ThermostatProtocol(conn)
