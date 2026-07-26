@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import orjson
 import pytest
@@ -130,3 +130,56 @@ def test_encode_message() -> None:
     encoded = _encode_message(msg)
     assert encoded.endswith(b" \x00")
     assert orjson.loads(encoded[:-2]) == msg
+
+
+@pytest.mark.asyncio
+async def test_pause_writing_schedules_stall_close() -> None:
+    protocol, _, transport = _make_protocol()
+    with patch("steamloop.connection.WRITE_STALL_TIMEOUT", 0):
+        protocol.pause_writing()
+        assert protocol._stall_handle is not None
+        await asyncio.sleep(0.01)
+        transport.close.assert_called_once()
+    assert protocol._stall_handle is None
+
+
+@pytest.mark.asyncio
+async def test_resume_writing_cancels_stall_close() -> None:
+    protocol, _, transport = _make_protocol()
+    with patch("steamloop.connection.WRITE_STALL_TIMEOUT", 0):
+        protocol.pause_writing()
+        protocol.resume_writing()
+        await asyncio.sleep(0.01)
+    assert protocol._stall_handle is None
+    transport.close.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_close_cancels_pending_stall_check() -> None:
+    protocol, _, transport = _make_protocol()
+    with patch("steamloop.connection.WRITE_STALL_TIMEOUT", 0):
+        protocol.pause_writing()
+        protocol.close()
+        await asyncio.sleep(0.01)
+    assert protocol._stall_handle is None
+    transport.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_connection_lost_cancels_pending_stall_check() -> None:
+    protocol, mock_conn, transport = _make_protocol()
+    with patch("steamloop.connection.WRITE_STALL_TIMEOUT", 0):
+        protocol.pause_writing()
+        protocol.connection_lost(None)
+        await asyncio.sleep(0.01)
+    assert protocol._stall_handle is None
+    transport.close.assert_not_called()
+    mock_conn._on_connection_lost.assert_called_once_with(None)
+
+
+@pytest.mark.asyncio
+async def test_write_stall_without_transport_is_noop() -> None:
+    protocol, _, _ = _make_protocol()
+    protocol._transport = None
+    protocol._on_write_stall()
+    assert protocol._stall_handle is None

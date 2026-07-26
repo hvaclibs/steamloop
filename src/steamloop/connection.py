@@ -30,6 +30,7 @@ from .const import (
     RECONNECT_DELAY,
     RECONNECT_MAX,
     RESPONSE_TIMEOUT,
+    WRITE_STALL_TIMEOUT,
     FanMode,
     HoldType,
     ZoneMode,
@@ -144,6 +145,7 @@ class ThermostatProtocol(asyncio.Protocol):
         self._connection = connection
         self._transport: asyncio.Transport | None = None
         self._buf = bytearray()
+        self._stall_handle: asyncio.TimerHandle | None = None
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         """Called when the TLS connection is established."""
@@ -156,7 +158,45 @@ class ThermostatProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc: Exception | None) -> None:
         """Called when the connection is lost."""
+        self._cancel_stall_check()
         self._connection._on_connection_lost(exc)  # noqa: SLF001
+
+    def pause_writing(self) -> None:
+        """
+        Called when the transport's write buffer exceeds its high-water mark.
+
+        The peer has stopped draining what we send. TCP can keep such a
+        socket open indefinitely (zero-window), so nothing else in this
+        library would ever notice: no connection_lost(), no reconnect, and
+        every subsequent write is buffered in memory without bound. Give the
+        peer WRITE_STALL_TIMEOUT to recover before declaring it dead.
+        """
+        _LOGGER.warning("Write buffer full — thermostat is not draining our writes")
+        self._stall_handle = asyncio.get_running_loop().call_later(
+            WRITE_STALL_TIMEOUT, self._on_write_stall
+        )
+
+    def resume_writing(self) -> None:
+        """Called when the write buffer drains below its low-water mark."""
+        _LOGGER.debug("Write buffer drained")
+        self._cancel_stall_check()
+
+    def _on_write_stall(self) -> None:
+        """Close a connection whose write buffer never drained."""
+        self._stall_handle = None
+        _LOGGER.error(
+            "Write buffer stalled for %ss — closing dead connection",
+            WRITE_STALL_TIMEOUT,
+        )
+        # Keep the delegate attached so connection_lost() reports the drop
+        # and the reconnect loop takes over.
+        if self._transport is not None:
+            self._transport.close()
+
+    def _cancel_stall_check(self) -> None:
+        if self._stall_handle is not None:
+            self._stall_handle.cancel()
+            self._stall_handle = None
 
     def send(self, msg: dict[str, Any]) -> None:
         """Send a message to the thermostat (sync — no drain needed)."""
@@ -172,6 +212,7 @@ class ThermostatProtocol(asyncio.Protocol):
 
     def close(self) -> None:
         """Close the transport."""
+        self._cancel_stall_check()
         if self._transport is not None:
             self._transport.close()
             self._transport = None
