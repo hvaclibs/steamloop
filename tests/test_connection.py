@@ -686,7 +686,7 @@ def test_on_connection_lost_without_exception(
 def test_on_message_queues_when_queue_set(
     connection: ThermostatConnection,
 ) -> None:
-    queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
     connection._message_queue = queue
     msg: dict[str, Any] = {"Heartbeat": {}}
     connection._on_message(msg)
@@ -1009,3 +1009,87 @@ def test_deadband_exact_gap_no_adjustment(
     req = msg["Request"]["UpdateTemperatureSetpoint"]
     assert req["heat_setpoint"] == "70"
     assert req["cool_setpoint"] == "73"  # 73 - 70 = 3, exactly meets deadband
+
+
+# ---------------------------------------------------------------------------
+# Connection loss during a request/response wait
+# ---------------------------------------------------------------------------
+
+
+async def test_login_reports_connection_loss_not_auth_failure(
+    connection: ThermostatConnection,
+) -> None:
+    """A drop while awaiting the login response is a connection error."""
+
+    async def _drop() -> None:
+        await asyncio.sleep(0.01)
+        connection._on_connection_lost(None)
+
+    task = asyncio.create_task(_drop())
+    with pytest.raises(SteamloopConnectionError, match="Connection lost during login"):
+        await connection.login()
+    await task
+
+
+async def test_login_reports_connection_loss_during_state_drain(
+    connection: ThermostatConnection,
+) -> None:
+    """A drop after the login response also surfaces as a connection error."""
+
+    async def _feed() -> None:
+        await asyncio.sleep(0.01)
+        connection._on_message({"Response": {"LoginResponse": {"status": "1"}}})
+        await asyncio.sleep(0.01)
+        connection._on_connection_lost(None)
+
+    task = asyncio.create_task(_feed())
+    with (
+        patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.2),
+        pytest.raises(SteamloopConnectionError, match="Connection lost during login"),
+    ):
+        await connection.login()
+    await task
+
+
+async def test_login_state_drain_is_bounded(
+    connection: ThermostatConnection,
+) -> None:
+    """A thermostat that never goes quiet cannot hold login() open forever."""
+    stop = asyncio.Event()
+
+    async def _chatter() -> None:
+        await asyncio.sleep(0.01)
+        connection._on_message({"Response": {"LoginResponse": {"status": "1"}}})
+        while not stop.is_set():
+            connection._on_message(make_event("ZoneAdded", {"zone_id": "1"}))
+            await asyncio.sleep(0.005)
+
+    task = asyncio.create_task(_chatter())
+    try:
+        with (
+            patch("steamloop.connection.RESPONSE_TIMEOUT", 0.2),
+            patch("steamloop.connection.INITIAL_STATE_TIMEOUT", 0.1),
+        ):
+            # Without an overall drain deadline this never returns.
+            result = await asyncio.wait_for(connection.login(), timeout=2)
+    finally:
+        stop.set()
+        await task
+    assert result["status"] == "1"
+
+
+async def test_pair_reports_connection_loss(
+    connection: ThermostatConnection,
+) -> None:
+    """A drop while waiting for the secret key is a connection error."""
+
+    async def _drop() -> None:
+        await asyncio.sleep(0.01)
+        connection._on_connection_lost(None)
+
+    task = asyncio.create_task(_drop())
+    with pytest.raises(
+        SteamloopConnectionError, match="Connection lost during pairing"
+    ):
+        await connection.pair()
+    await task

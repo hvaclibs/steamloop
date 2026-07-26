@@ -239,7 +239,9 @@ class ThermostatConnection:
         self._transport: asyncio.Transport | None = None
         self._run_task: asyncio.Task[None] | None = None
         self._connection_lost_event = asyncio.Event()
-        self._message_queue: asyncio.Queue[dict[str, Any]] | None = None
+        # None is pushed as a sentinel when the connection drops, so a
+        # request/response wait fails fast instead of running out its timeout.
+        self._message_queue: asyncio.Queue[dict[str, Any] | None] | None = None
         self.state = ThermostatState()
         self._event_callbacks: list[Callable[[dict[str, Any]], None]] = []
         self._connected = False
@@ -385,6 +387,8 @@ class ThermostatConnection:
         else:
             _LOGGER.warning("Connection closed by thermostat")
         self._connection_lost_event.set()
+        if self._message_queue is not None:
+            self._message_queue.put_nowait(None)
 
     def _dispatch(self, msg: dict[str, Any]) -> None:
         """Update internal state from a message and notify callbacks."""
@@ -501,7 +505,7 @@ class ThermostatConnection:
             SteamloopConnectionError: If the connection is lost.
 
         """
-        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         self._message_queue = queue
         try:
             self.send_request(
@@ -520,6 +524,8 @@ class ThermostatConnection:
                     msg = await asyncio.wait_for(queue.get(), timeout=remaining)
                 except TimeoutError:
                     break
+                if msg is None:
+                    raise SteamloopConnectionError("Connection lost during login")
                 if "Response" not in msg:
                     continue
                 resp = msg["Response"]
@@ -536,18 +542,33 @@ class ThermostatConnection:
                     )
             if login_resp is None:
                 raise AuthenticationError("No login response received")
-            # Drain the initial state burst — the thermostat sends zone
-            # discovery events right after the login response.  Keep
-            # reading until the stream goes quiet so that callers see a
-            # fully-populated ``state`` when login() returns.
-            while True:
-                try:
-                    await asyncio.wait_for(queue.get(), timeout=INITIAL_STATE_TIMEOUT)
-                except TimeoutError:
-                    break
+            await self._drain_initial_state(queue)
             return login_resp
         finally:
             self._message_queue = None
+
+    @staticmethod
+    async def _drain_initial_state(queue: asyncio.Queue[dict[str, Any] | None]) -> None:
+        """
+        Consume the state burst the thermostat sends right after login.
+
+        Reads until the stream goes quiet so callers see a fully-populated
+        ``state``. The quiet period is only reached if the peer stops
+        talking, so the whole drain is capped: a thermostat reporting more
+        often than INITIAL_STATE_TIMEOUT would otherwise keep login() — and
+        the reconnect loop awaiting it — here forever.
+        """
+        with contextlib.suppress(TimeoutError):
+            async with asyncio.timeout(RESPONSE_TIMEOUT):
+                while True:
+                    try:
+                        msg = await asyncio.wait_for(
+                            queue.get(), timeout=INITIAL_STATE_TIMEOUT
+                        )
+                    except TimeoutError:
+                        return
+                    if msg is None:
+                        raise SteamloopConnectionError("Connection lost during login")
 
     async def pair(self) -> SetSecretKeyRequest:
         """
@@ -565,7 +586,7 @@ class ThermostatConnection:
             SteamloopConnectionError: If the connection is lost.
 
         """
-        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         self._message_queue = queue
         try:
             self.send_request(
@@ -588,6 +609,8 @@ class ThermostatConnection:
                     )
                 except TimeoutError:
                     continue
+                if msg is None:
+                    raise SteamloopConnectionError("Connection lost during pairing")
                 if "Request" in msg and "SetSecretKey" in msg.get("Request", {}):
                     ssk: SetSecretKeyRequest = msg["Request"]["SetSecretKey"]
                     secret_key = ssk["secret_key"]
