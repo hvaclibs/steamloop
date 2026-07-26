@@ -3,7 +3,7 @@
 __version__ = "1.2.3"
 
 from .connection import ThermostatConnection, load_pairing, save_pairing
-from .const import DEFAULT_PORT, FanMode, HoldType, ZoneMode
+from .const import DEFAULT_PORT, FanMode, HoldType, HVACActivity, ZoneMode
 from .exceptions import (
     AuthenticationError,
     CommandError,
@@ -18,6 +18,7 @@ __all__ = [
     "AuthenticationError",
     "CommandError",
     "FanMode",
+    "HVACActivity",
     "HoldType",
     "PairingError",
     "SteamloopConnectionError",
