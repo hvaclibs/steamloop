@@ -72,6 +72,7 @@ Interactive commands: `status`, `heat <temp>`, `cool <temp>`, `mode <off|auto|co
 import asyncio
 from steamloop import ThermostatConnection, ZoneMode, FanMode
 
+
 async def main():
     conn = ThermostatConnection(
         "192.168.1.100",
@@ -87,6 +88,7 @@ async def main():
         conn.set_zone_mode("1", ZoneMode.COOL)
         conn.set_fan_mode(FanMode.AUTO)
 
+
 asyncio.run(main())
 ```
 
@@ -96,6 +98,7 @@ asyncio.run(main())
 
 ```python
 from steamloop import ThermostatConnection
+
 
 async def pair(ip: str) -> str:
     conn = ThermostatConnection(ip, secret_key="")
@@ -113,11 +116,14 @@ Or use the built-in file helpers to save/load pairing data to disk:
 from steamloop import ThermostatConnection, save_pairing, load_pairing
 
 # Save after pairing
-await save_pairing(ip, {
-    "secret_key": secret_key,
-    "device_type": "automation",
-    "device_id": "module",
-})
+await save_pairing(
+    ip,
+    {
+        "secret_key": secret_key,
+        "device_type": "automation",
+        "device_id": "module",
+    },
+)
 
 # Load later
 pairing = await load_pairing(ip)
@@ -129,6 +135,7 @@ conn = ThermostatConnection(ip, secret_key=pairing["secret_key"])
 ```python
 def on_event(msg):
     print("Received:", msg)
+
 
 remove = conn.add_event_callback(on_event)
 # later: remove() to unregister
