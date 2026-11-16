@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import stat
+import sys
 from pathlib import Path
+
+import pytest
 
 from steamloop.connection import (
     _pairing_path,
@@ -47,9 +50,21 @@ async def test_load_not_found_returns_none(tmp_path: Path) -> None:
     assert result is None
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows has no POSIX permission bits; os.open() cannot express 0o600",
+)
 async def test_save_file_permissions(tmp_path: Path) -> None:
     ip = "192.168.1.50"
     await save_pairing(ip, {"secret_key": "s"}, tmp_path)
     path = _pairing_path(ip, tmp_path)
     mode = stat.S_IMODE(path.stat().st_mode)
     assert mode == 0o600
+
+
+async def test_save_writes_lf_endings(tmp_path: Path) -> None:
+    # os.open() defaults to text mode on Windows, which would turn the JSON's "\n" into
+    # "\r\n": the same data, but different bytes per platform.
+    ip = "192.168.1.50"
+    await save_pairing(ip, {"secret_key": "s"}, tmp_path)
+    assert b"\r\n" not in _pairing_path(ip, tmp_path).read_bytes()

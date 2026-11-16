@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+import os
 import ssl
 import tempfile
 import zlib
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -126,15 +128,23 @@ def _decode(data: str) -> bytes:
 @contextmanager
 def _pem_path(data: bytes) -> Generator[str, None, None]:
     """
-    Yield a file path containing PEM data, cleaned up on exit.
+    Yield a path to a temporary PEM file, removed on exit.
 
     ssl.SSLContext.load_cert_chain() only accepts file paths — there is no
     in-memory (cadata) variant for client certs in Python's ssl module.
+    You cannot re-open a 'delete-on-close' file on Windows. We create a
+    temp file that is not delete-on-close, write it, close it, yield the path back,
+    and unlink it when the caller's block exits.
     """
-    with tempfile.NamedTemporaryFile(suffix=".pem") as f:
-        f.write(data)
-        f.flush()
-        yield f.name
+    fd, raw_path = tempfile.mkstemp(suffix=".pem")
+    path = Path(raw_path)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+        yield str(path)
+    finally:
+        with suppress(OSError):
+            path.unlink()
 
 
 @dataclass(frozen=True)
