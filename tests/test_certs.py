@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import ssl
+from pathlib import Path
 
-from steamloop.certs import CERT_SETS, create_ssl_context
+from steamloop.certs import CERT_SETS, _pem_path, create_ssl_context
 
 
 def test_cert_sets_has_two_entries() -> None:
@@ -33,3 +34,11 @@ def test_primary_has_no_root_ca() -> None:
 
 def test_secondary_has_root_ca() -> None:
     assert CERT_SETS[1].root_ca_data is not None
+
+
+def test_pem_path_yields_a_readable_file_and_removes_it() -> None:
+    # load_cert_chain() opens the path itself, so the file must be readable while the
+    # context manager has yielded, and must be gone once it exits.
+    with _pem_path(b"PEM") as path:
+        assert Path(path).read_bytes() == b"PEM"
+    assert not Path(path).exists()
