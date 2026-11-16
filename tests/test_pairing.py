@@ -60,3 +60,11 @@ async def test_save_file_permissions(tmp_path: Path) -> None:
     path = _pairing_path(ip, tmp_path)
     mode = stat.S_IMODE(path.stat().st_mode)
     assert mode == 0o600
+
+
+async def test_save_writes_lf_endings(tmp_path: Path) -> None:
+    # os.open() defaults to text mode on Windows, which would turn the JSON's "\n" into
+    # "\r\n": the same data, but different bytes per platform.
+    ip = "192.168.1.50"
+    await save_pairing(ip, {"secret_key": "s"}, tmp_path)
+    assert b"\r\n" not in _pairing_path(ip, tmp_path).read_bytes()

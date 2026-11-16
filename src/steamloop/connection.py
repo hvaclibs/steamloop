@@ -109,6 +109,10 @@ async def save_pairing(
     """
     Save pairing data for a thermostat IP.
 
+    The file holds the secret key and is created owner-only (0o600). Windows has no
+    POSIX permission bits, so protection there comes from the directory's ACL: create
+    pairing files in a directory that other users cannot read.
+
     Args:
         ip: Thermostat IP address.
         login_info: Dict with secret_key, device_type, device_id.
@@ -124,7 +128,13 @@ async def save_pairing(
 def _save_pairing_sync(path: Path, login_info: dict[str, str]) -> None:
     """Synchronous pairing file write (atomic via rename)."""
     tmp_path = path.with_suffix(".tmp")
-    fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    # O_BINARY exists only on Windows. There os.open defaults to text mode, which would
+    # turn every "\n" into "\r\n" - the same JSON, but different bytes per platform.
+    fd = os.open(
+        tmp_path,
+        os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0),
+        0o600,
+    )
     try:
         os.write(fd, orjson.dumps(login_info, option=orjson.OPT_INDENT_2))
     finally:
